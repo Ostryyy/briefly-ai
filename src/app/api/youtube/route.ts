@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { statusStore } from "@/app/lib/statusStore";
 import { downloadAudioFromYoutube } from "@/app/lib/ytDlp";
-import { JobStatus } from "@/app/types/JobStatus";
+import { transcribeAudio } from "@/app/lib/whisperClient";
+import { generateSummary } from "@/app/lib/summarizer";
+import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { url } = body;
+  const { url, level } = body;
 
-  if (!url) {
-    return NextResponse.json({ error: "No YouTube URL provided" }, { status: 400 });
+  if (!url || !level) {
+    return NextResponse.json({ error: "URL and level are required" }, { status: 400 });
   }
 
   const jobId = uuidv4();
@@ -24,11 +26,11 @@ export async function POST(req: NextRequest) {
   try {
     const audioPath = await downloadAudioFromYoutube(url, jobId);
 
-    jobStatus.status = "TRANSCRIBING";
-    jobStatus.progress = 30;
-    statusStore.set(jobId, jobStatus);
+    const transcript = await transcribeAudio(jobId, audioPath);
 
-    return NextResponse.json({ jobId, audioPath });
+    const summary = await generateSummary(jobId, transcript, level as SummaryLevel);
+
+    return NextResponse.json({ jobId, summary });
   } catch (err: any) {
     console.error(err);
     jobStatus.status = "FAILED";
