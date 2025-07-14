@@ -6,7 +6,12 @@ import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
 import { v4 as uuidv4 } from "uuid";
 import { writeFile } from "fs/promises";
 import path from "path";
-import os from "os";
+
+import {
+  ensureTempDirExists,
+  getTempDir,
+  removeTempFile,
+} from "@/app/lib/fileUtils";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -21,7 +26,9 @@ export async function POST(req: NextRequest) {
   }
 
   const jobId = uuidv4();
-  const tempDir = path.join(os.tmpdir(), "briefly-ai");
+
+  await ensureTempDirExists();
+  const tempDir = getTempDir();
   const tempFilePath = path.join(tempDir, `${jobId}.mp3`);
 
   await writeFile(tempFilePath, Buffer.from(await file.arrayBuffer()));
@@ -36,8 +43,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const transcript = await transcribeAudio(jobId, tempFilePath);
-
     const summary = await generateSummary(jobId, transcript, level);
+
+    await removeTempFile(tempFilePath);
 
     return NextResponse.json({ jobId, summary });
   } catch (err: any) {
@@ -45,6 +53,9 @@ export async function POST(req: NextRequest) {
     jobStatus.status = "FAILED";
     jobStatus.message = err.message;
     statusStore.set(jobId, jobStatus);
+
+    await removeTempFile(tempFilePath);
+
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

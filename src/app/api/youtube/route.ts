@@ -6,12 +6,20 @@ import { generateSummary } from "@/app/lib/summarizer";
 import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
 import { v4 as uuidv4 } from "uuid";
 
+import {
+  ensureTempDirExists,
+  removeTempFile,
+} from "@/app/lib/fileUtils";
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { url, level } = body;
 
   if (!url || !level) {
-    return NextResponse.json({ error: "URL and level are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "URL and level are required" },
+      { status: 400 }
+    );
   }
 
   const jobId = uuidv4();
@@ -24,18 +32,32 @@ export async function POST(req: NextRequest) {
   statusStore.set(jobId, jobStatus);
 
   try {
+    await ensureTempDirExists();
+
     const audioPath = await downloadAudioFromYoutube(url, jobId);
 
     const transcript = await transcribeAudio(jobId, audioPath);
 
-    const summary = await generateSummary(jobId, transcript, level as SummaryLevel);
+    const summary = await generateSummary(
+      jobId,
+      transcript,
+      level as SummaryLevel
+    );
+
+    await removeTempFile(audioPath);
 
     return NextResponse.json({ jobId, summary });
   } catch (err: any) {
     console.error(err);
+
     jobStatus.status = "FAILED";
     jobStatus.message = err.message;
     statusStore.set(jobId, jobStatus);
+
+    if (err.audioPath) {
+      await removeTempFile(err.audioPath);
+    }
+
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
