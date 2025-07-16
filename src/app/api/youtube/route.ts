@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { statusStore } from "@/app/lib/statusStore";
-import { downloadAudioFromYoutube } from "@/app/lib/ytDlp";
-import { transcribeAudio } from "@/app/lib/whisperClient";
-import { generateSummary } from "@/app/lib/summarizer";
-import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  ensureTempDirExists,
-  removeTempFile,
-} from "@/app/lib/fileUtils";
+import { statusStore } from "@/app/lib/statusStore";
+import { JobStatus } from "@/app/types/JobStatus";
+import { SummaryLevel } from "@/app/types/JobStatus";
+import { processJob } from "@/app/lib/workers/processJob";
+
+interface YoutubeJobBody {
+  url: string;
+  level: SummaryLevel;
+  email: string;
+}
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { url, level } = body;
+  let body: YoutubeJobBody;
 
-  if (!url || !level) {
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { url, level, email } = body;
+
+  const requiredFields = { url, level, email };
+  const missingFields = Object.entries(requiredFields)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingFields.length > 0) {
     return NextResponse.json(
-      { error: "URL and level are required" },
+      { error: `Missing required fields: ${missingFields.join(", ")}` },
       { status: 400 }
     );
   }
@@ -25,39 +38,30 @@ export async function POST(req: NextRequest) {
   const jobId = uuidv4();
   const jobStatus: JobStatus = {
     jobId,
-    status: "DOWNLOADING",
+    status: "PENDING",
     progress: 0,
+    userEmail: email,
   };
 
   statusStore.set(jobId, jobStatus);
 
-  try {
-    await ensureTempDirExists();
-
-    const audioPath = await downloadAudioFromYoutube(url, jobId);
-
-    const transcript = await transcribeAudio(jobId, audioPath);
-
-    const summary = await generateSummary(
+  processJob({
+    jobId,
+    source: "youtube",
+    url,
+    level: level as SummaryLevel,
+    email,
+  }).catch(async (err: Error) => {
+    const jobStatus: JobStatus = {
       jobId,
-      transcript,
-      level as SummaryLevel
-    );
+      status: "FAILED",
+      progress: 100,
+      userEmail: email,
+      message: err.message,
+    };
 
-    await removeTempFile(audioPath);
-
-    return NextResponse.json({ jobId, summary });
-  } catch (err: any) {
-    console.error(err);
-
-    jobStatus.status = "FAILED";
-    jobStatus.message = err.message;
     statusStore.set(jobId, jobStatus);
+  });
 
-    if (err.audioPath) {
-      await removeTempFile(err.audioPath);
-    }
-
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  return NextResponse.json({ jobId });
 }

@@ -11,6 +11,8 @@ export interface JobStatus {
   status: StatusType;
   progress: number;
   message?: string;
+  userEmail: string;
+  summary?: string;
 }
 
 export type SummaryLevel = "short" | "medium" | "detailed" | "extreme";
