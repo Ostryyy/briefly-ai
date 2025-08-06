@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/app/lib/mongodb";
 import { withAuth } from "@/app/lib/middleware/authMiddleware";
+import { ObjectId } from "mongodb";
 
 const VALID_STATUSES = ["PENDING", "READY", "FAILED"];
 
@@ -14,10 +15,10 @@ export const GET = withAuth(async (req: NextRequest, user) => {
   const limit = parseInt(searchParams.get("limit") || "10");
 
   const query: {
-    userId: string;
+    userId: ObjectId;
     status?: string;
   } = {
-    userId: user.userId,
+    userId: new ObjectId(user.userId),
   };
 
   if (status && VALID_STATUSES.includes(status)) {
