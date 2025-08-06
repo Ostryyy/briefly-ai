@@ -11,8 +11,10 @@ import {
 } from "@/app/lib/fileUtils";
 import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
 import { processJob } from "@/app/lib/workers/processJob";
+import { withAuth } from "@/app/lib/middleware/authMiddleware";
+import { AuthUser } from "@/app/types/AuthUser";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   let formData: FormData;
 
   try {
@@ -26,9 +28,8 @@ export async function POST(req: NextRequest) {
 
   const file = formData.get("file") as File;
   const level = formData.get("level") as SummaryLevel;
-  const email = formData.get("email") as string;
 
-  const requiredFields = { file, level, email };
+  const requiredFields = { file, level };
   const missingFields = Object.entries(requiredFields)
     .filter(([, value]) => !value)
     .map(([key]) => key);
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     jobId,
     status: "PENDING",
     progress: 0,
-    userEmail: email,
+    userEmail: user.email,
   };
 
   statusStore.set(jobId, jobStatus);
@@ -62,7 +63,8 @@ export async function POST(req: NextRequest) {
     source: "upload",
     audioPath: tempFilePath,
     level,
-    email,
+    email: user.email,
+    userId: user.userId,
   }).catch(async (err: Error) => {
     await removeTempFile(tempFilePath);
 
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
       jobId,
       status: "FAILED",
       progress: 100,
-      userEmail: email,
+      userEmail: user.email,
       message: err.message,
     };
 
@@ -78,4 +80,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ jobId });
-}
+});

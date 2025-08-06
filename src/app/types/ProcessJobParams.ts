@@ -4,6 +4,7 @@ export interface BaseJobParams {
   jobId: string;
   level: SummaryLevel;
   email: string;
+  userId: string;
 }
 
 export type ProcessJobParams =

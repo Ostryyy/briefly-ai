@@ -5,6 +5,9 @@ import { statusStore } from "@/app/lib/statusStore";
 import { JobStatus } from "@/app/types/JobStatus";
 import { SummaryLevel } from "@/app/types/JobStatus";
 import { processJob } from "@/app/lib/workers/processJob";
+import { withAuth } from "@/app/lib/middleware/authMiddleware";
+import { AuthUser } from "@/app/types/AuthUser";
+import { getYoutubeVideoDurationSeconds } from "@/app/lib/ytUtils";
 
 interface YoutubeJobBody {
   url: string;
@@ -12,7 +15,7 @@ interface YoutubeJobBody {
   email: string;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   let body: YoutubeJobBody;
 
   try {
@@ -21,9 +24,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { url, level, email } = body;
+  const { url, level } = body;
 
-  const requiredFields = { url, level, email };
+  const requiredFields = { url, level };
   const missingFields = Object.entries(requiredFields)
     .filter(([, value]) => !value)
     .map(([key]) => key);
@@ -35,12 +38,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  try {
+    const duration = await getYoutubeVideoDurationSeconds(url);
+    const maxDurationSeconds = 30 * 60;
+
+    if (duration > maxDurationSeconds) {
+      return NextResponse.json(
+        { error: "Video too long. Maximum allowed duration is 30 minutes." },
+        { status: 400 }
+      );
+    }
+  } catch (err) {
+    console.error("Error fetching video metadata:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch video information" },
+      { status: 500 }
+    );
+  }
+
   const jobId = uuidv4();
   const jobStatus: JobStatus = {
     jobId,
     status: "PENDING",
     progress: 0,
-    userEmail: email,
+    userEmail: user.email,
   };
 
   statusStore.set(jobId, jobStatus);
@@ -50,13 +71,14 @@ export async function POST(req: NextRequest) {
     source: "youtube",
     url,
     level: level as SummaryLevel,
-    email,
+    email: user.email,
+    userId: user.userId,
   }).catch(async (err: Error) => {
     const jobStatus: JobStatus = {
       jobId,
       status: "FAILED",
       progress: 100,
-      userEmail: email,
+      userEmail: user.email,
       message: err.message,
     };
 
@@ -64,4 +86,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ jobId });
-}
+});

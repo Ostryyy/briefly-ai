@@ -18,7 +18,7 @@ export async function processJob(params: ProcessJobParams) {
       const { url } = params;
 
       jobStatus.status = "DOWNLOADING";
-      statusStore.set(jobId, jobStatus);
+      statusStore.set(jobId, jobStatus, params.userId);
 
       await ensureTempDirExists();
       audioPath = await downloadAudioFromYoutube(url, jobId);
@@ -31,13 +31,13 @@ export async function processJob(params: ProcessJobParams) {
 
     jobStatus.status = "TRANSCRIBING";
     jobStatus.progress = 30;
-    statusStore.set(jobId, jobStatus);
+    statusStore.set(jobId, jobStatus, params.userId);
 
     const transcript = await transcribeAudio(jobId, audioPath);
 
     jobStatus.status = "SUMMARIZING";
     jobStatus.progress = 70;
-    statusStore.set(jobId, jobStatus);
+    statusStore.set(jobId, jobStatus, params.userId);
 
     const summary = await generateSummary(jobId, transcript, level);
 
@@ -47,7 +47,7 @@ export async function processJob(params: ProcessJobParams) {
     jobStatus.progress = 100;
     jobStatus.message = "Job completed!";
     jobStatus.summary = summary;
-    statusStore.set(jobId, jobStatus);
+    statusStore.set(jobId, jobStatus, params.userId);
   } catch (err: unknown) {
     throw err;
   }
