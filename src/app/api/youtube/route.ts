@@ -1,22 +1,28 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
-import { statusStore } from "@/app/lib/statusStore";
-import { JobStatus } from "@/app/types/JobStatus";
-import { SummaryLevel } from "@/app/types/JobStatus";
-import { processJob } from "@/app/lib/workers/processJob";
-import { withAuth } from "@/app/lib/middleware/authMiddleware";
-import { AuthUser } from "@/app/types/AuthUser";
-import { getYoutubeVideoDurationSeconds } from "@/app/lib/ytUtils";
+import { statusStore } from "@server/state/statusStore";
+import { processJob } from "@server/workers/processJob";
+import { withAuth } from "@server/middleware/withAuth";
+import { getYoutubeVideoDurationSeconds } from "@server/services/ytUtils";
 
-interface YoutubeJobBody {
+import type { AuthUser } from "@shared/types/auth";
+import type { JobStatus, SummaryLevel } from "@shared/types/job";
+
+type YoutubeJobBody = {
   url: string;
   level: SummaryLevel;
-  email: string;
-}
+};
+
+const MAX_DURATION_SECONDS = 30 * 60;
+const YT_URL_RE =
+  /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]{6,}/i;
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
-  let body: YoutubeJobBody;
+  let body: Partial<YoutubeJobBody> = {};
 
   try {
     body = await req.json();
@@ -24,25 +30,28 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { url, level } = body;
+  const url = (body.url ?? "").trim();
+  const level = body.level;
 
-  const requiredFields = { url, level };
-  const missingFields = Object.entries(requiredFields)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-
-  if (missingFields.length > 0) {
+  if (!url || !level) {
     return NextResponse.json(
-      { error: `Missing required fields: ${missingFields.join(", ")}` },
+      { error: "Missing required fields: url, level" },
       { status: 400 }
     );
+  }
+  if (!YT_URL_RE.test(url)) {
+    return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
   }
 
   try {
     const duration = await getYoutubeVideoDurationSeconds(url);
-    const maxDurationSeconds = 30 * 60;
-
-    if (duration > maxDurationSeconds) {
+    if (!Number.isFinite(duration)) {
+      return NextResponse.json(
+        { error: "Unable to read video duration" },
+        { status: 400 }
+      );
+    }
+    if (duration! > MAX_DURATION_SECONDS) {
       return NextResponse.json(
         { error: "Video too long. Maximum allowed duration is 30 minutes." },
         { status: 400 }
@@ -57,14 +66,14 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   }
 
   const jobId = uuidv4();
-  const jobStatus: JobStatus = {
+  const initialStatus: JobStatus = {
     jobId,
     status: "PENDING",
     progress: 0,
     userEmail: user.email,
   };
 
-  statusStore.set(jobId, jobStatus);
+  statusStore.set(jobId, initialStatus);
 
   processJob({
     jobId,
@@ -82,8 +91,8 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
       message: err.message,
     };
 
-    statusStore.set(jobId, jobStatus);
+    await statusStore.set(jobId, jobStatus, user.userId);
   });
 
-  return NextResponse.json({ jobId });
+  return NextResponse.json({ jobId }, { status: 202 });
 });

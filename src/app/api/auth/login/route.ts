@@ -1,5 +1,8 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/app/lib/mongodb";
+import { getDb } from "@server/db/mongodb";
 import { compare } from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
@@ -12,7 +15,15 @@ interface UserDocument {
 }
 
 export async function POST(req: NextRequest) {
-  const { email, password } = await req.json();
+  let body: { email?: string; password?: string };
+
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { email, password } = body || {};
 
   if (!email || !password) {
     return NextResponse.json(
@@ -21,9 +32,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!process.env.JWT_SECRET) {
+    console.error("JWT_SECRET is not set");
+    return NextResponse.json(
+      { error: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   try {
-    const client = await clientPromise;
-    const db = client.db("briefly");
+    const db = await getDb();
 
     const user = (await db
       .collection("users")
@@ -34,7 +52,6 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordMatch = await compare(password, user.password);
-
     if (!passwordMatch) {
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -44,10 +61,8 @@ export async function POST(req: NextRequest) {
 
     const token = jwt.sign(
       { userId: user._id.toString(), email: user.email },
-      process.env.JWT_SECRET!,
-      {
-        expiresIn: "7d",
-      }
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     return NextResponse.json({

@@ -1,7 +1,11 @@
-import { hash } from "bcryptjs";
-import clientPromise from "@/app/lib/mongodb";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@server/db/mongodb";
+import { hash } from "bcryptjs";
 import jwt from "jsonwebtoken";
+import type { ObjectId, OptionalId } from "mongodb";
 
 interface RegisterRequestBody {
   email: string;
@@ -9,8 +13,15 @@ interface RegisterRequestBody {
   password: string;
 }
 
+type UserDoc = {
+  _id?: ObjectId;
+  email: string;
+  username: string;
+  password: string;
+};
+
 export async function POST(req: NextRequest) {
-  let body: RegisterRequestBody;
+  let body: Partial<RegisterRequestBody> = {};
 
   try {
     body = await req.json();
@@ -18,7 +29,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { email, username, password } = body;
+  const email = (body.email ?? "").trim().toLowerCase();
+  const username = (body.username ?? "").trim();
+  const password = body.password ?? "";
 
   if (!email || !username || !password) {
     return NextResponse.json(
@@ -27,44 +40,55 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const client = await clientPromise;
-    const db = client.db("briefly");
+  if (!process.env.JWT_SECRET) {
+    console.error("JWT_SECRET is not set");
+    return NextResponse.json(
+      { error: "Server configuration error" },
+      { status: 500 }
+    );
+  }
 
-    const existingUser = await db.collection("users").findOne({ email });
-    if (existingUser) {
+  try {
+    const db = await getDb();
+    const users = db.collection<UserDoc>("users");
+
+    const existing = await users.findOne({ $or: [{ email }, { username }] });
+    if (existing) {
+      const conflictField = existing.email === email ? "email" : "username";
       return NextResponse.json(
-        { error: "User already exists" },
+        { error: `User with this ${conflictField} already exists` },
         { status: 409 }
       );
     }
 
     const hashedPassword = await hash(password, 10);
 
-    const result = await db.collection("users").insertOne({
+    const newUser: OptionalId<UserDoc> = {
       email,
       username,
       password: hashedPassword,
-    });
+    };
+
+    const result = await users.insertOne(newUser);
 
     const token = jwt.sign(
-      {
-        userId: result.insertedId.toString(),
-        email,
-      },
-      process.env.JWT_SECRET!,
+      { userId: result.insertedId.toString(), email },
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    return NextResponse.json({
-      message: "User registered successfully",
-      token,
-      user: {
-        email,
-        username,
-        id: result.insertedId.toString(),
+    return NextResponse.json(
+      {
+        message: "User registered successfully",
+        token,
+        user: {
+          id: result.insertedId.toString(),
+          email,
+          username,
+        },
       },
-    });
+      { status: 201 }
+    );
   } catch (err) {
     console.error("Register error:", err);
     return NextResponse.json(

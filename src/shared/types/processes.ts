@@ -1,4 +1,4 @@
-import { SummaryLevel } from "./JobStatus";
+import { SummaryLevel } from "./job";
 
 export interface BaseJobParams {
   jobId: string;

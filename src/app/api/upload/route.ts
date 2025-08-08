@@ -1,18 +1,21 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { writeFile } from "fs/promises";
 import path from "path";
 
-import { statusStore } from "@/app/lib/statusStore";
+import { statusStore } from "@server/state/statusStore";
 import {
   ensureTempDirExists,
   getTempDir,
   removeTempFile,
-} from "@/app/lib/fileUtils";
-import { JobStatus, SummaryLevel } from "@/app/types/JobStatus";
-import { processJob } from "@/app/lib/workers/processJob";
-import { withAuth } from "@/app/lib/middleware/authMiddleware";
-import { AuthUser } from "@/app/types/AuthUser";
+} from "@server/services/audioUtils";
+import { processJob } from "@server/workers/processJob";
+import type { JobStatus, SummaryLevel } from "@shared/types/job";
+import { withAuth } from "@server/middleware/withAuth";
+import type { AuthUser } from "@shared/types/auth";
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   let formData: FormData;
@@ -47,16 +50,16 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   const tempDir = getTempDir();
   const tempFilePath = path.join(tempDir, `${jobId}.mp3`);
 
-  await writeFile(tempFilePath, Buffer.from(await file.arrayBuffer()));
+  await writeFile(tempFilePath, Buffer.from(await file!.arrayBuffer()));
 
-  const jobStatus: JobStatus = {
+  const initialStatus: JobStatus = {
     jobId,
     status: "PENDING",
     progress: 0,
     userEmail: user.email,
   };
 
-  statusStore.set(jobId, jobStatus);
+  statusStore.set(jobId, initialStatus);
 
   processJob({
     jobId,
@@ -66,7 +69,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     email: user.email,
     userId: user.userId,
   }).catch(async (err: Error) => {
-    await removeTempFile(tempFilePath);
+    await removeTempFile(tempFilePath).catch(() => {});
 
     const jobStatus: JobStatus = {
       jobId,
@@ -76,7 +79,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
       message: err.message,
     };
 
-    statusStore.set(jobId, jobStatus);
+    await statusStore.set(jobId, jobStatus, user.userId);
   });
 
   return NextResponse.json({ jobId });
