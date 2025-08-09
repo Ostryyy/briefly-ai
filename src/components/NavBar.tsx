@@ -23,7 +23,7 @@ export default function Navbar() {
                 Jobs
               </Link>
               <button
-                className="rounded bg-black px-3 py-1 text-white"
+                className="rounded bg-black px-3 py-1 text-white cursor-pointer"
                 onClick={logout}
               >
                 Sign out
@@ -31,7 +31,7 @@ export default function Navbar() {
             </>
           ) : (
             <button
-              className="rounded bg-black px-3 py-1 text-white"
+              className="rounded bg-black px-3 py-1 text-white cursor-pointer"
               onClick={() => setAuthOpen(true)}
             >
               Sign in

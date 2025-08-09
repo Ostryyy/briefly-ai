@@ -107,7 +107,7 @@ export default function AuthModal({
           </h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 cursor-pointer"
             aria-label="Close"
           >
             ✕
@@ -152,7 +152,7 @@ export default function AuthModal({
           <button
             disabled={busy}
             onClick={submit}
-            className="mt-1 w-full rounded-lg bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
+            className="mt-1 w-full rounded-lg bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 cursor-pointer"
           >
             {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Register"}
           </button>
@@ -163,7 +163,7 @@ export default function AuthModal({
                 No account?{" "}
                 <button
                   type="button"
-                  className="underline"
+                  className="underline cursor-pointer"
                   onClick={() => setMode("register")}
                 >
                   Register
@@ -174,7 +174,7 @@ export default function AuthModal({
                 Already have an account?{" "}
                 <button
                   type="button"
-                  className="underline"
+                  className="underline cursor-pointer"
                   onClick={() => setMode("login")}
                 >
                   Sign in
