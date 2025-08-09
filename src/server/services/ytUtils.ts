@@ -1,5 +1,6 @@
 import "server-only";
 import { spawn } from "node:child_process";
+import { getCookiesArgs } from "./ytdlpShared";
 
 export type YtMetaOpts = {
   binaryPath?: string;
@@ -11,11 +12,12 @@ export function getYoutubeVideoDurationSeconds(
   opts: YtMetaOpts = {}
 ): Promise<number> {
   const ytBin = opts.binaryPath ?? process.env.YTDLP_PATH ?? "yt-dlp";
-  const timeoutMs = opts.timeoutMs ?? 15 * 60 * 1000;
+  const timeoutMs = opts.timeoutMs ?? 60_000;
+
+  const cookies = getCookiesArgs();
 
   return new Promise<number>((resolve, reject) => {
-    const args = ["--no-playlist", "--skip-download", "-j", url];
-
+    const args = ["--no-playlist", "--skip-download", "-j", ...cookies, url];
     const child = spawn(ytBin, args, { stdio: ["ignore", "pipe", "pipe"] });
 
     let stdoutBuf = "";
@@ -32,70 +34,86 @@ export function getYoutubeVideoDurationSeconds(
 
     child.on("error", (err) => {
       clearTimeout(timer);
-      reject(
-        new Error(
-          `Failed to spawn yt-dlp (${ytBin}). Is it installed and on PATH? Original error: ${err.message}`
-        )
-      );
+      reject(new Error(`Failed to spawn yt-dlp (${ytBin}): ${err.message}`));
     });
 
-    child.stdout.on("data", (buf: Buffer) => {
-      stdoutBuf += buf.toString();
-    });
+    child.stdout.on("data", (b) => (stdoutBuf += b.toString()));
+    child.stderr.on("data", (b) => (stderrBuf += b.toString()));
 
-    child.stderr.on("data", (buf: Buffer) => {
-      stderrBuf += buf.toString();
-    });
-
-    child.on("close", (code) => {
+    child.on("close", async (code) => {
       clearTimeout(timer);
       if (timedOut) return;
 
-      if (code !== 0) {
-        if (/HTTP Error 403|fragment .* not found/i.test(stderrBuf)) {
-          reject(
-            new Error(
-              "yt-dlp returned HTTP 403 / fragment not found. The video may be age/region restricted or temporarily unavailable."
-            )
-          );
-          return;
+      const restricted =
+        /HTTP Error 403|Sign in to confirm|age-?restricted|region|denied|membership|private|login/i;
+
+      if (code !== 0 && restricted.test(stderrBuf)) {
+        // fallback z innym clientem
+        const alt = await runOnce(ytBin, [
+          "--no-playlist",
+          "--skip-download",
+          "-j",
+          "--extractor-args",
+          "youtube:player_client=android",
+          ...cookies,
+          url,
+        ]);
+        if (alt.code === 0) {
+          const d = pickDurationFromJsonLines(alt.stdout);
+          return d != null
+            ? resolve(d)
+            : reject(new Error("Unable to parse video duration"));
         }
-        reject(
+      }
+
+      if (code !== 0) {
+        return reject(
           new Error(
             `yt-dlp exited with code ${code}. Stderr:\n${
               stderrBuf || "(empty)"
             }`
           )
         );
-        return;
       }
 
-      const lines = stdoutBuf
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      for (const line of lines) {
-        try {
-          const obj = JSON.parse(line) as { duration?: number };
-          if (
-            obj &&
-            typeof obj.duration === "number" &&
-            Number.isFinite(obj.duration)
-          ) {
-            resolve(obj.duration);
-            return;
-          }
-        } catch {
-          // ignore parse errors for non-JSON lines
-        }
-      }
-
-      reject(
-        new Error(
-          "Could not determine video duration from yt-dlp metadata (possibly a livestream or missing duration field)."
-        )
-      );
+      const duration = pickDurationFromJsonLines(stdoutBuf);
+      return duration != null
+        ? resolve(duration)
+        : reject(
+            new Error(
+              "Could not determine video duration from yt-dlp metadata."
+            )
+          );
     });
   });
+}
+
+function pickDurationFromJsonLines(buf: string): number | null {
+  const lines = buf
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    try {
+      const obj = JSON.parse(line) as { duration?: number };
+      if (typeof obj.duration === "number" && Number.isFinite(obj.duration))
+        return obj.duration;
+    } catch {}
+  }
+  return null;
+}
+
+function runOnce(cmd: string, args: string[]) {
+  return new Promise<{ stdout: string; stderr: string; code: number }>(
+    (res) => {
+      const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+      let out = "",
+        err = "";
+      p.stdout.on("data", (d) => (out += d.toString()));
+      p.stderr.on("data", (d) => (err += d.toString()));
+      p.on("close", (code) =>
+        res({ stdout: out.trim(), stderr: err.trim(), code: code ?? 0 })
+      );
+    }
+  );
 }
