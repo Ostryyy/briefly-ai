@@ -64,7 +64,7 @@ export default function JobForm() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-full bg-gray-100 p-1">
           <button
-            className={`px-3 py-1 text-sm rounded-full ${
+            className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
               mode === "upload" ? "bg-white shadow" : ""
             }`}
             onClick={() => setMode("upload")}
@@ -72,7 +72,7 @@ export default function JobForm() {
             Upload
           </button>
           <button
-            className={`px-3 py-1 text-sm rounded-full ${
+            className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
               mode === "youtube" ? "bg-white shadow" : ""
             }`}
             onClick={() => setMode("youtube")}
@@ -82,7 +82,7 @@ export default function JobForm() {
         </div>
 
         <select
-          className="ml-auto rounded-lg border bg-white px-3 py-1.5 text-sm"
+          className="ml-auto rounded-lg border bg-white px-3 py-1.5 text-sm cursor-pointer"
           value={level}
           onChange={(e) => setLevel(e.target.value as Level)}
         >
@@ -120,7 +120,16 @@ export default function JobForm() {
 
       <button
         onClick={onSubmit}
-        className="rounded-xl bg-black px-4 py-2 text-white hover:opacity-90"
+        disabled={mode === "upload" ? !file : !url}
+        className={`rounded-xl px-4 py-2 text-white hover:opacity-90 cursor-pointer ${
+          mode === "upload"
+            ? !file
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-black"
+            : !url
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-black"
+        }`}
       >
         Start
       </button>
