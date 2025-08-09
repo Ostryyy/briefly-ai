@@ -4,6 +4,7 @@ import { api } from "@lib/api";
 import { useJobStream } from "@lib/sse";
 import type { JobDoc } from "@shared/types/jobs";
 import StatusBadge from "@components/StatusBadge";
+import SummaryViewer from "@components/SummaryViewer";
 
 export default function JobDetails({
   params,
@@ -59,11 +60,7 @@ export default function JobDetails({
             )}
           </div>
 
-          {view.summary && (
-            <article className="prose max-w-none">
-              <pre className="whitespace-pre-wrap">{view.summary}</pre>
-            </article>
-          )}
+          {view.summary && <SummaryViewer markdown={view.summary} />}
         </div>
       )}
     </div>
