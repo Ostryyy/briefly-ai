@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@lib/api";
-import type { PaginatedJobs, JobStatusType } from "@shared/types/jobs";
+import type { PaginatedJobs, JobStatusType, JobDoc } from "@shared/types/jobs";
 import JobCard from "@components/JobCard";
 import { isAuthed } from "@lib/auth";
 import AuthModal from "@components/AuthModal";
+import { useJobsStream } from "@lib/sse-multi";
 
 const FILTERS: { key?: JobStatusType | "active"; label: string }[] = [
   { label: "All" },
@@ -13,15 +14,19 @@ const FILTERS: { key?: JobStatusType | "active"; label: string }[] = [
   { key: "FAILED", label: "Failed" },
 ];
 
+const ACTIVE = new Set<JobStatusType>([
+  "PENDING",
+  "DOWNLOADING",
+  "TRANSCRIBING",
+  "SUMMARIZING",
+]);
+
 export default function JobsPage() {
   const [authOpen, setAuthOpen] = useState(false);
-  const [status, setStatus] = useState<JobStatusType | "active" | undefined>(
-    undefined
-  );
+  const [status, setStatus] = useState<JobStatusType | "active" | undefined>();
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PaginatedJobs | null>(null);
   const [loading, setLoading] = useState(false);
-
   const limit = 12;
 
   useEffect(() => {
@@ -32,15 +37,36 @@ export default function JobsPage() {
     setLoading(true);
     api
       .jobs({ status, page, limit })
-      .then((res) => setData(res))
-      .catch((e) => console.error(e))
+      .then(setData)
+      .catch(console.error)
       .finally(() => setLoading(false));
   }, [status, page]);
 
-  const totalPages = useMemo(
-    () => data?.pagination?.totalPages ?? 1,
-    [data?.pagination]
-  );
+  const activeIds = useMemo(() => {
+    if (!data?.jobs) return [];
+    return data.jobs.filter((j) => ACTIVE.has(j.status)).map((j) => j.jobId);
+  }, [data]);
+
+  const updates = useJobsStream(activeIds);
+
+  const mergedJobs: JobDoc[] = useMemo(() => {
+    if (!data?.jobs) return [];
+    return data.jobs.map((j) =>
+      updates[j.jobId] ? { ...j, ...updates[j.jobId] } : j
+    );
+  }, [data, updates]);
+
+  useEffect(() => {
+    if (status !== "active") return;
+    const becameTerminal = Object.values(updates).some(
+      (u) => !ACTIVE.has(u.status)
+    );
+    if (becameTerminal) {
+      api.jobs({ status, page, limit }).then(setData).catch(console.error);
+    }
+  }, [updates, status, page]);
+
+  const totalPages = data?.pagination?.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
@@ -73,12 +99,12 @@ export default function JobsPage() {
             Loading…
           </div>
         )}
-        {!loading && data?.jobs?.length === 0 && (
+        {!loading && mergedJobs.length === 0 && (
           <div className="col-span-full text-center text-sm text-gray-500">
             No jobs yet.
           </div>
         )}
-        {data?.jobs?.map((j) => (
+        {mergedJobs.map((j) => (
           <JobCard key={j.jobId} job={j} />
         ))}
       </div>
