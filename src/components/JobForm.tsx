@@ -162,7 +162,7 @@ export default function JobForm() {
 
       {showOverlay && (
         <div
-          className="absolute inset-0 z-10 grid place-items-center bg-white/70 backdrop-blur-sm"
+          className="absolute inset-0 z-10 grid place-items-center bg-white/70"
           role="status"
           aria-live="polite"
         >
