@@ -1,6 +1,7 @@
 import "server-only";
 import { spawn } from "node:child_process";
 import { getCookiesArgs } from "./ytdlpShared";
+import { env } from "@server/config/env";
 
 export type YtMetaOpts = {
   binaryPath?: string;
@@ -11,7 +12,7 @@ export function getYoutubeVideoDurationSeconds(
   url: string,
   opts: YtMetaOpts = {}
 ): Promise<number> {
-  const ytBin = opts.binaryPath ?? process.env.YTDLP_PATH ?? "yt-dlp";
+  const ytBin = opts.binaryPath ?? env.YTDLP_PATH ?? "yt-dlp";
   const timeoutMs = opts.timeoutMs ?? 60_000;
 
   const cookies = getCookiesArgs();
@@ -48,7 +49,6 @@ export function getYoutubeVideoDurationSeconds(
         /HTTP Error 403|Sign in to confirm|age-?restricted|region|denied|membership|private|login/i;
 
       if (code !== 0 && restricted.test(stderrBuf)) {
-        // fallback z innym clientem
         const alt = await runOnce(ytBin, [
           "--no-playlist",
           "--skip-download",

@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { writeFile } from "fs/promises";
 import path from "path";
 
+import { env } from "@server/config/env";
 import { statusStore } from "@server/state/statusStore";
 import {
   ensureTempDirExists,
@@ -16,8 +17,31 @@ import { processJob } from "@server/workers/processJob";
 import type { JobStatus, SummaryLevel } from "@shared/types/job";
 import { withAuth } from "@server/middleware/withAuth";
 import type { AuthUser } from "@shared/types/auth";
+import { createRateLimiter, clientIp } from "@server/middleware/rateLimit";
+
+const limiter = createRateLimiter(env.RATE_LIMIT_PER_MIN);
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
+  if (!limiter.allow(clientIp(req.headers))) {
+    return NextResponse.json(
+      { error: "Too many requests", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+  }
+
+  const maxBytes = env.MAX_UPLOAD_MB * 1024 * 1024;
+  const clen = req.headers.get("content-length");
+  if (clen && Number(clen) > maxBytes) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "FILE_TOO_LARGE",
+        error: `Max ${env.MAX_UPLOAD_MB} MB`,
+      },
+      { status: 413 }
+    );
+  }
+
   let formData: FormData;
 
   try {
@@ -44,6 +68,17 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     );
   }
 
+  if (file.size > maxBytes) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "FILE_TOO_LARGE",
+        error: `Max ${env.MAX_UPLOAD_MB} MB`,
+      },
+      { status: 413 }
+    );
+  }
+
   const jobId = uuidv4();
 
   await ensureTempDirExists();
@@ -59,7 +94,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     userEmail: user.email,
   };
 
-  statusStore.set(jobId, initialStatus);
+  statusStore.set(jobId, initialStatus, user.userId);
 
   processJob({
     jobId,
@@ -82,5 +117,5 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     await statusStore.set(jobId, jobStatus, user.userId);
   });
 
-  return NextResponse.json({ jobId });
+  return NextResponse.json({ jobId }, { status: 202 });
 });

@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { mkdir } from "fs/promises";
+import { env } from "@server/config/env";
 
 type DlOpts = {
   cookiesPath?: string;
@@ -26,7 +27,7 @@ export async function downloadAudioFromYoutube(
   const outputPath = path.join(outputDir, `${outputFileName}.m4a`);
 
   const {
-    cookiesPath = process.env.YTDLP_COOKIES_PATH,
+    cookiesPath = env.YTDLP_COOKIES_PATH,
     preferIpv4 = true,
     concurrentFragments = 4,
     retries = 10,

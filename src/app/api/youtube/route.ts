@@ -4,10 +4,12 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
+import { env } from "@server/config/env";
 import { statusStore } from "@server/state/statusStore";
 import { processJob } from "@server/workers/processJob";
 import { withAuth } from "@server/middleware/withAuth";
 import { getYoutubeVideoDurationSeconds } from "@server/services/ytUtils";
+import { createRateLimiter, clientIp } from "@server/middleware/rateLimit";
 
 import type { AuthUser } from "@shared/types/auth";
 import type { JobStatus, SummaryLevel } from "@shared/types/job";
@@ -17,11 +19,20 @@ type YoutubeJobBody = {
   level: SummaryLevel;
 };
 
-const MAX_DURATION_SECONDS = 30 * 60;
+const limiter = createRateLimiter(env.RATE_LIMIT_PER_MIN);
+
+const MAX_DURATION_SECONDS = env.MAX_VIDEO_MINUTES * 60;
 const YT_URL_RE =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]{6,}/i;
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
+  if (!limiter.allow(clientIp(req.headers))) {
+    return NextResponse.json(
+      { error: "Too many requests", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+  }
+
   let body: Partial<YoutubeJobBody> = {};
 
   try {
@@ -53,7 +64,9 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     }
     if (duration! > MAX_DURATION_SECONDS) {
       return NextResponse.json(
-        { error: "Video too long. Maximum allowed duration is 30 minutes." },
+        {
+          error: `Video too long. Maximum allowed duration is ${env.MAX_VIDEO_MINUTES} minutes.`,
+        },
         { status: 400 }
       );
     }
