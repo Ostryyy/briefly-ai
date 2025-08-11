@@ -51,6 +51,9 @@ RUN useradd -m app && chown -R app:app /app
 USER app
 
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s CMD curl -fsS http://localhost:3000/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
+  CMD curl -fsS http://localhost:3000/api/health >/dev/null \
+  && curl -fsS http://localhost:3000/api/health/db >/dev/null \
+  || exit 1
 
 CMD ["node","server.js"]

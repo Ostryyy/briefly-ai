@@ -1,10 +1,9 @@
 import "server-only";
 import { MongoClient, MongoClientOptions, Db } from "mongodb";
+import { env } from "@server/config/env";
 
-const uri = process.env.MONGODB_URI;
-if (!uri) {
-  throw new Error("Please define MONGODB_URI in your environment (.env.local)");
-}
+const uri = env.MONGODB_URI;
+const db = env.MONGODB_DB;
 
 const options: MongoClientOptions = {};
 
@@ -28,9 +27,7 @@ if (process.env.NODE_ENV === "development") {
 
 export default clientPromise;
 
-export async function getDb(
-  name = process.env.MONGODB_DB || "briefly"
-): Promise<Db> {
+export async function getDb(): Promise<Db> {
   const client = await clientPromise;
-  return client.db(name);
+  return client.db(db);
 }
