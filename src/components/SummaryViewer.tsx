@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import type { Options as RehypeSanitizeOptions } from "rehype-sanitize";
 
 type Props = {
   markdown: string;
@@ -18,17 +19,14 @@ type MyCodeProps = React.HTMLAttributes<HTMLElement> & {
   children?: React.ReactNode;
 };
 
-const sanitizeSchema = {
+const sanitizeSchema: RehypeSanitizeOptions = {
   ...defaultSchema,
   attributes: {
-    ...defaultSchema.attributes,
-    code: [...(defaultSchema.attributes?.code || []), "className"],
-    h1: [...((defaultSchema.attributes as any)?.h1 || []), "id"],
-    h2: [...((defaultSchema.attributes as any)?.h2 || []), "id"],
-    h3: [...((defaultSchema.attributes as any)?.h3 || []), "id"],
-    h4: [...((defaultSchema.attributes as any)?.h4 || []), "id"],
-    h5: [...((defaultSchema.attributes as any)?.h5 || []), "id"],
-    h6: [...((defaultSchema.attributes as any)?.h6 || []), "id"],
+    ...(defaultSchema.attributes || {}),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    code: [...(defaultSchema.attributes?.code || ([] as any[])), "className"],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    "*": [...(defaultSchema.attributes?.["*"] || ([] as any[])), "id"],
   },
 };
 
@@ -46,17 +44,15 @@ const CodeRenderer = ({ inline, className, children, ...props }: MyCodeProps) =>
   );
 
 const markdownComponents: Components = {
-  h1: ({ node, ...props }) => <h1 className="mb-3" {...props} />,
-  h2: ({ node, ...props }) => <h2 className="mt-6" {...props} />,
-  h3: ({ node, ...props }) => <h3 className="mt-4" {...props} />,
-  ul: ({ node, ...props }) => <ul className="list-disc pl-6" {...props} />,
-  ol: ({ node, ...props }) => <ol className="list-decimal pl-6" {...props} />,
-  blockquote: ({ node, ...props }) => (
+  h1: (props) => <h1 className="mb-3" {...props} />,
+  h2: (props) => <h2 className="mt-6" {...props} />,
+  h3: (props) => <h3 className="mt-4" {...props} />,
+  ul: (props) => <ul className="list-disc pl-6" {...props} />,
+  ol: (props) => <ol className="list-decimal pl-6" {...props} />,
+  blockquote: (props) => (
     <blockquote className="border-l-4 pl-4 italic text-gray-700" {...props} />
   ),
-  a: ({ node, ...props }) => (
-    <a target="_blank" rel="noopener noreferrer" {...props} />
-  ),
+  a: (props) => <a target="_blank" rel="noopener noreferrer" {...props} />,
   code: CodeRenderer,
 };
 
@@ -67,6 +63,7 @@ export default function SummaryViewer({ markdown, className }: Props) {
   const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>(
     []
   );
+
   useEffect(() => {
     const el = articleRef.current;
     if (!el) return;

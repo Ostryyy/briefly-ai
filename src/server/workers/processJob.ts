@@ -11,10 +11,6 @@ import type { ProcessJobParams } from "@shared/types/processes";
 
 const MOCK_MODE = process.env.MOCK_MODE === "true";
 
-function sleep(ms: number) {
-  return new Promise<void>((res) => setTimeout(res, ms));
-}
-
 export async function processJob(params: ProcessJobParams) {
   if (MOCK_MODE) {
     await simulateProcessJob(params);

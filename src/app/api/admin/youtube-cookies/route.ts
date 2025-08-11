@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
     } catch {}
     await fs.rename(tmp, COOKIES_PATH);
     return NextResponse.json({ ok: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     if (e?.code === "EACCES" || e?.code === "EPERM") {
       return NextResponse.json(
