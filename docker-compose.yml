@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        YTDLP_VERSION: ${YTDLP_VERSION:-2024.07.16}
+    env_file: .env
+    environment:
+      YTDLP_COOKIES_PATH: /etc/briefly/cookies/youtube.cookies.txt
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+    volumes:
+      - jobs-tmp:/var/briefly/tmp
+
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+  jobs-tmp:
