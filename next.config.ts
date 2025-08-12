@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 
 const csp = [
   "default-src 'self'",
-  "img-src 'self' data: https:",
-  "script-src 'self'",
+  "img-src 'self' data: blob:",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
 ].join("; ");
