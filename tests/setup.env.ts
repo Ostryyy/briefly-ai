@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 
-vi.stubEnv("MOCK_MODE", "true");
 vi.stubEnv("SKIP_ENV_VALIDATION", "true");
 vi.stubEnv("NODE_ENV", "test");
 vi.stubEnv("MONGODB_URI", "mongodb://localhost:27017/");
