@@ -5,6 +5,7 @@ import StatusBadge from "./StatusBadge";
 export default function JobCard({ job }: { job: JobDoc }) {
   return (
     <Link
+      data-testid={`jobcard-${job.jobId}`}
       href={`/jobs/${job.jobId}`}
       className="group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
@@ -12,7 +13,7 @@ export default function JobCard({ job }: { job: JobDoc }) {
         <div className="font-mono text-xs text-gray-500 truncate">
           {job.jobId}
         </div>
-        <StatusBadge status={job.status} />
+        <StatusBadge status={job.status} data-testid="jobcard-status" />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-4 text-sm">

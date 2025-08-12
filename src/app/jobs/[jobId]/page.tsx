@@ -36,7 +36,7 @@ export default function JobDetails({
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-semibold">Job {jobId}</h1>
-        {view && <StatusBadge status={view.status} />}
+        {view && <StatusBadge status={view.status} data-testid="jobdetails-status" />}
       </div>
 
       {!view ? (
@@ -60,7 +60,7 @@ export default function JobDetails({
             )}
           </div>
 
-          {view.summary && <SummaryViewer markdown={view.summary} />}
+          {view.summary && <SummaryViewer markdown={view.summary} data-testid="summary-viewer" />}
         </div>
       )}
     </div>

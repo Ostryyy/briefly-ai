@@ -88,7 +88,7 @@ export default function AuthModal({
 
   const content = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
+      className="fixed inset-0 z-[100] flex items-center justify-center" data-testid="auth-modal"
       role="dialog"
       aria-modal="true"
     >
@@ -106,6 +106,7 @@ export default function AuthModal({
             {mode === "login" ? "Sign in" : "Create account"}
           </h2>
           <button
+            data-testid="auth-close"
             onClick={onClose}
             className="rounded p-1 text-gray-500 hover:bg-gray-100 cursor-pointer"
             aria-label="Close"
@@ -120,6 +121,8 @@ export default function AuthModal({
             className="w-full rounded border px-3 py-2"
             placeholder="Email"
             type="email"
+            id="auth-email"
+            data-testid="auth-email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -127,6 +130,8 @@ export default function AuthModal({
 
           {mode === "register" && (
             <input
+              id="auth-username"
+              data-testid="auth-username"
               ref={userRef}
               className="w-full rounded border px-3 py-2"
               placeholder="Username"
@@ -140,6 +145,8 @@ export default function AuthModal({
             className="w-full rounded border px-3 py-2"
             placeholder="Password"
             type="password"
+            id="auth-password"
+            data-testid="auth-password"
             autoComplete={
               mode === "login" ? "current-password" : "new-password"
             }
@@ -150,6 +157,7 @@ export default function AuthModal({
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
+            data-testid="auth-submit"
             disabled={busy}
             onClick={submit}
             className="mt-1 w-full rounded-lg bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 cursor-pointer"
@@ -162,6 +170,7 @@ export default function AuthModal({
               <>
                 No account?{" "}
                 <button
+                  data-testid="auth-goto-register"
                   type="button"
                   className="underline cursor-pointer"
                   onClick={() => setMode("register")}
@@ -173,6 +182,7 @@ export default function AuthModal({
               <>
                 Already have an account?{" "}
                 <button
+                  data-testid="auth-goto-login"
                   type="button"
                   className="underline cursor-pointer"
                   onClick={() => setMode("login")}

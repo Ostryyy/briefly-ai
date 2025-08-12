@@ -84,7 +84,7 @@ export default function JobForm() {
               className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
                 mode === "upload" ? "bg-white shadow" : ""
               }`}
-              onClick={() => setMode("upload")}
+              data-testid="jobform-mode-upload" onClick={() => setMode("upload")}
               disabled={starting}
             >
               Upload
@@ -93,14 +93,14 @@ export default function JobForm() {
               className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
                 mode === "youtube" ? "bg-white shadow" : ""
               }`}
-              onClick={() => setMode("youtube")}
+              data-testid="jobform-mode-youtube" onClick={() => setMode("youtube")}
               disabled={starting}
             >
               YouTube
             </button>
           </div>
 
-          <select
+          <select data-testid="jobform-level-select"
             className="ml-auto rounded-lg border bg-white px-3 py-1.5 text-sm cursor-pointer"
             value={level}
             onChange={(e) => setLevel(e.target.value as Level)}
@@ -117,6 +117,8 @@ export default function JobForm() {
           <label className="block w-full cursor-pointer rounded-xl border border-dashed bg-gray-50 p-6 text-center hover:bg-gray-100">
             <input
               type="file"
+              id="jobform-file-input"
+              data-testid="jobform-file-input"
               accept="audio/*,video/*"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
@@ -132,6 +134,8 @@ export default function JobForm() {
           </label>
         ) : (
           <input
+            id="jobform-youtube-url"
+            data-testid="jobform-youtube-url"
             placeholder="https://www.youtube.com/watch?v=..."
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -141,6 +145,7 @@ export default function JobForm() {
         )}
 
         <button
+          data-testid="jobform-submit"
           onClick={onSubmit}
           disabled={!canSubmit || starting}
           className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-white hover:opacity-90 cursor-pointer ${

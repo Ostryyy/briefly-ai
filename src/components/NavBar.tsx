@@ -12,17 +12,17 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 bg-white/70 backdrop-blur border-b">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <Link href="/" className="font-semibold text-xl">
+        <Link href="/" className="font-semibold text-xl" data-testid="navbar-brand">
           Briefly<span className="text-blue-600">.AI</span>
         </Link>
 
         <nav className="flex items-center gap-4">
           {isAuthed ? (
             <>
-              <Link href="/jobs" className="hover:underline">
+              <Link href="/jobs" data-testid="navbar-jobs-link" className="hover:underline">
                 Jobs
               </Link>
-              <button
+              <button data-testid="navbar-sign-out"
                 className="rounded bg-black px-3 py-1 text-white cursor-pointer"
                 onClick={logout}
               >
@@ -32,7 +32,7 @@ export default function Navbar() {
           ) : (
             <button
               className="rounded bg-black px-3 py-1 text-white cursor-pointer"
-              onClick={() => setAuthOpen(true)}
+              data-testid="navbar-sign-in" onClick={() => setAuthOpen(true)}
             >
               Sign in
             </button>

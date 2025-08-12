@@ -76,6 +76,7 @@ export default function JobsPage() {
           return (
             <button
               key={f.label}
+              data-testid={`jobs-filter-${f.key ?? 'all'}`}
               onClick={() => {
                 setPage(1);
                 setStatus(f.key);
@@ -93,7 +94,7 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="jobs-list">
         {loading && (
           <div className="col-span-full text-center text-sm text-gray-500">
             Loading…
@@ -112,6 +113,7 @@ export default function JobsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <button
+            data-testid="jobs-prev"
             className="rounded border bg-white px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -122,6 +124,7 @@ export default function JobsPage() {
             Page {page} / {totalPages}
           </div>
           <button
+            data-testid="jobs-next"
             className="rounded border bg-white px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

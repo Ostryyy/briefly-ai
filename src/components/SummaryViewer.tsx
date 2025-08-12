@@ -8,9 +8,8 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import type { Options as RehypeSanitizeOptions } from "rehype-sanitize";
 
-type Props = {
+type Props = React.HTMLAttributes<HTMLDivElement> & {
   markdown: string;
-  className?: string;
 };
 
 type MyCodeProps = React.HTMLAttributes<HTMLElement> & {
@@ -56,7 +55,7 @@ const markdownComponents: Components = {
   code: CodeRenderer,
 };
 
-export default function SummaryViewer({ markdown, className }: Props) {
+export default function SummaryViewer({ markdown, className, ...rest }: Props) {
   const [raw, setRaw] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
 
@@ -101,7 +100,7 @@ export default function SummaryViewer({ markdown, className }: Props) {
   const hasToc = useMemo(() => toc.length > 1, [toc]);
 
   return (
-    <div className={className}>
+    <div {...rest} className={className}>
       {hasToc && !raw && (
         <nav className="mb-4 rounded-xl border bg-white p-3">
           <div className="mb-2 text-xs font-semibold text-gray-500">
@@ -145,11 +144,12 @@ export default function SummaryViewer({ markdown, className }: Props) {
         <button
           onClick={() => setRaw((v) => !v)}
           className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50 cursor-pointer"
-          aria-label="Toggle raw/rendered view"
+          data-testid="summary-toggle-raw" aria-label="Toggle raw/rendered view"
         >
           {raw ? "Show rendered" : "Show raw"}
         </button>
         <button
+          data-testid="summary-copy"
           onClick={copyMd}
           className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50 cursor-pointer"
           aria-label="Copy Markdown"
@@ -157,6 +157,7 @@ export default function SummaryViewer({ markdown, className }: Props) {
           Copy
         </button>
         <button
+          data-testid="summary-download"
           onClick={downloadMd}
           className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50 cursor-pointer"
           aria-label="Download Markdown file"
