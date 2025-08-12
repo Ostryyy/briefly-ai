@@ -71,7 +71,6 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
       );
     }
   } catch (err) {
-    console.error("Error fetching video metadata:", err);
     return NextResponse.json(
       { error: "Failed to fetch video information" },
       { status: 500 }
