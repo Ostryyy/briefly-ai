@@ -3,6 +3,7 @@ import type { JobStatus } from "@shared/types/job";
 import { getDb } from "@server/db/mongodb";
 import { ObjectId } from "mongodb";
 import { sendJobStatusEmail } from "@server/services/emailService";
+import { ensureDbIndexes } from "@server/db/ensureIndexes";
 
 type Listener = (status: JobStatus) => void;
 type Store = ReturnType<typeof createStatusStore>;
@@ -42,18 +43,33 @@ function createStatusStore() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { jobId: _omit, ...statusFields } = snapshot;
 
-        await db.collection("jobs").updateOne(
-          { jobId, userId: new ObjectId(userId) },
-          {
-            $setOnInsert: {
-              jobId,
-              userId: new ObjectId(userId),
-              createdAt: now,
+        await ensureDbIndexes().catch(() => {});
+        try {
+          await db.collection("jobs").updateOne(
+            { jobId },
+            {
+              $setOnInsert: {
+                jobId,
+                userId: new ObjectId(userId),
+                createdAt: now,
+              },
+              $set: { ...statusFields, updatedAt: now },
             },
-            $set: { ...statusFields, updatedAt: now },
-          },
-          { upsert: true }
-        );
+            { upsert: true }
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (e: any) {
+          if (e?.code === 11000) {
+            await db
+              .collection("jobs")
+              .updateOne(
+                { jobId },
+                { $set: { ...statusFields, updatedAt: now } }
+              );
+          } else {
+            throw e;
+          }
+        }
       }
 
       const changed = prev !== snapshot.status;

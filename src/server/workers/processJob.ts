@@ -9,6 +9,10 @@ import { transcribeAudio } from "@server/services/whisperClient";
 import { generateSummary } from "@server/services/summarizer";
 import type { ProcessJobParams } from "@shared/types/processes";
 
+import { time, type Metrics } from "@server/workers/metrics";
+import { fileSize } from "@server/workers/fileSize";
+import { saveJobMetrics } from "@server/db/jobsRepo";
+
 const MOCK_MODE = process.env.MOCK_MODE === "true";
 
 export async function processJob(params: ProcessJobParams) {
@@ -22,50 +26,78 @@ export async function processJob(params: ProcessJobParams) {
   if (!jobStatus) return;
 
   let audioPath: string | undefined;
+  const metrics: Metrics = {};
+  const tStart = Date.now();
 
   try {
     if (source === "youtube") {
       const { url } = params;
       jobStatus.status = "DOWNLOADING";
+      jobStatus.progress = 10;
       await statusStore.set(jobId, jobStatus, params.userId);
 
       await ensureTempDirExists();
-      audioPath = await downloadAudioFromYoutube(url, jobId);
+      audioPath = await time("downloadMs", metrics, async () => {
+        return await downloadAudioFromYoutube(url, jobId);
+      });
     } else if (source === "upload") {
       audioPath = params.audioPath;
     } else {
       throw new Error(`Unsupported source: ${source}`);
     }
 
+    metrics.inputBytes = audioPath ? await fileSize(audioPath) : undefined;
+
     jobStatus.status = "TRANSCRIBING";
     jobStatus.progress = 30;
     await statusStore.set(jobId, jobStatus, params.userId);
 
-    const transcript = await transcribeAudio(audioPath!);
+    const transcript = await time("transcribeMs", metrics, async () => {
+      return await transcribeAudio(audioPath!);
+    });
 
     jobStatus.status = "SUMMARIZING";
     jobStatus.progress = 70;
     await statusStore.set(jobId, jobStatus, params.userId);
 
-    const summary = await generateSummary(transcript, level);
+    const summary = await time("summarizeMs", metrics, async () => {
+      return await generateSummary(transcript, level);
+    });
 
-    await removeTempFile(audioPath!).catch(() => {});
+    const summaryBytes =
+      typeof summary === "string"
+        ? Buffer.byteLength(summary, "utf8")
+        : Buffer.byteLength(JSON.stringify(summary), "utf8");
+    metrics.outputBytes = summaryBytes;
+
+    if (audioPath) {
+      await removeTempFile(audioPath).catch(() => {});
+    }
 
     jobStatus.status = "READY";
     jobStatus.progress = 100;
     jobStatus.message = "Job completed!";
-    jobStatus.summary = summary;
+    jobStatus.summary = summary as string;
     await statusStore.set(jobId, jobStatus, params.userId);
+
+    metrics.totalMs = Date.now() - tStart;
+    await saveJobMetrics(jobId, metrics);
   } catch (err) {
     try {
       if (audioPath) await removeTempFile(audioPath);
     } catch {}
-    const jobStatus = statusStore.get(params.jobId);
-    if (!jobStatus) return;
-    jobStatus.status = "FAILED";
-    jobStatus.progress = 100;
-    jobStatus.message = err instanceof Error ? err.message : "Unknown error";
-    await statusStore.set(params.jobId, jobStatus, params.userId);
+
+    metrics.totalMs = Date.now() - tStart;
+    try {
+      await saveJobMetrics(jobId, metrics);
+    } catch {}
+
+    const js = statusStore.get(params.jobId);
+    if (!js) return;
+    js.status = "FAILED";
+    js.progress = 100;
+    js.message = err instanceof Error ? err.message : "Unknown error";
+    await statusStore.set(params.jobId, js, params.userId);
   }
 }
 
