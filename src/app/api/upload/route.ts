@@ -119,8 +119,19 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
 
   const tempFilePath = path.join(tempDir, `${jobId}.${ext}`);
 
-  const ab = await file.arrayBuffer();
-  await writeFile(tempFilePath, Buffer.from(ab));
+  try {
+    const ab = await file.arrayBuffer();
+    await writeFile(tempFilePath, Buffer.from(ab));
+  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "WRITE_FAILED",
+        error: "Failed to save uploaded file",
+      },
+      { status: 500 }
+    );
+  }
 
   const initialStatus: JobStatus = {
     jobId,
