@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@lib/api";
 import { isAuthed } from "@lib/auth";
 import AuthModal from "@components/AuthModal";
@@ -57,13 +58,22 @@ export default function JobForm() {
         fd.append("level", level);
         const { jobId } = await api.startUpload(fd);
         setJobId(jobId);
+        toast.success("Upload started");
       } else {
         if (!url) return;
         const { jobId } = await api.startYoutube({ url, level });
         setJobId(jobId);
+        toast.success("YouTube job started");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to start job");
+      toast.error(
+        <span data-testid="toast-job-start-error">
+          Could not start the job
+        </span>,
+        {
+          description: e instanceof Error ? e.message : "Failed to start job",
+        }
+      );
     } finally {
       setStarting(false);
     }
@@ -84,7 +94,8 @@ export default function JobForm() {
               className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
                 mode === "upload" ? "bg-white shadow" : ""
               }`}
-              data-testid="jobform-mode-upload" onClick={() => setMode("upload")}
+              data-testid="jobform-mode-upload"
+              onClick={() => setMode("upload")}
               disabled={starting}
             >
               Upload
@@ -93,14 +104,16 @@ export default function JobForm() {
               className={`px-3 py-1 text-sm rounded-full cursor-pointer ${
                 mode === "youtube" ? "bg-white shadow" : ""
               }`}
-              data-testid="jobform-mode-youtube" onClick={() => setMode("youtube")}
+              data-testid="jobform-mode-youtube"
+              onClick={() => setMode("youtube")}
               disabled={starting}
             >
               YouTube
             </button>
           </div>
 
-          <select data-testid="jobform-level-select"
+          <select
+            data-testid="jobform-level-select"
             className="ml-auto rounded-lg border bg-white px-3 py-1.5 text-sm cursor-pointer"
             value={level}
             onChange={(e) => setLevel(e.target.value as Level)}
@@ -167,6 +180,7 @@ export default function JobForm() {
 
       {showOverlay && (
         <div
+          data-testid="jobform-overlay"
           className="absolute inset-0 z-10 grid place-items-center bg-white/70"
           role="status"
           aria-live="polite"
@@ -180,7 +194,9 @@ export default function JobForm() {
 
       {jobId && (
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          <div className="text-xs text-gray-500">Job ID: {jobId}</div>
+          <div data-testid="jobinfo-id-value" className="text-xs text-gray-500">
+            Job ID: {jobId}
+          </div>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-5">
             {steps.map((s, i) => (
