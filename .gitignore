@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env
+.env.e2e
 secrets/
 
 # vercel
@@ -40,3 +41,6 @@ secrets/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test results
+test-results

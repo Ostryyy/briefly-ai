@@ -9,12 +9,14 @@
     "start:next": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:run": "vitest run --reporter=verbose"
+    "test:run": "vitest run --reporter=verbose",
+    "dev:e2e": "node -e \"require('fs').chmodSync('tests/e2e/yt-dlp-mock.js', 0o755)\" && cross-env MOCK_MODE=true YTDLP_PATH=./tests/e2e/yt-dlp-mock.js next dev -p 3000"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cookies": "^0.9.1",
+    "dotenv": "^17.2.1",
     "form-data": "^4.0.3",
     "franc": "^6.2.0",
     "jsonwebtoken": "^9.0.2",
@@ -45,6 +47,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "server-only": "^0.0.1",
