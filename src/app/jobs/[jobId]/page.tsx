@@ -35,8 +35,14 @@ export default function JobDetails({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">Job {jobId}</h1>
-        {view && <StatusBadge status={view.status} data-testid="jobdetails-status" />}
+        <h1 className="text-xl font-semibold">
+          Job <span data-testid="jobdetails-id">{jobId}</span>
+        </h1>
+        {view && (
+          <span data-testid="jobdetails-status">
+            <StatusBadge status={view.status} />
+          </span>
+        )}
       </div>
 
       {!view ? (
@@ -60,7 +66,12 @@ export default function JobDetails({
             )}
           </div>
 
-          {view.summary && <SummaryViewer markdown={view.summary} data-testid="summary-viewer" />}
+          {view.summary && (
+            <SummaryViewer
+              markdown={view.summary}
+              data-testid="summary-viewer"
+            />
+          )}
         </div>
       )}
     </div>
