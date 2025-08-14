@@ -77,6 +77,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
         { status: 400 }
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     return NextResponse.json(
       { error: "Failed to fetch video information" },
