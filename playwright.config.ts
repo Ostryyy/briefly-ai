@@ -17,14 +17,12 @@ const webEnv: Record<string, string> = {
   BASE_URL,
   MOCK_MODE: "true",
   YTDLP_PATH: path.resolve(__dirname, "tests/e2e/yt-dlp-mock.js"),
-  // Next.js i tak wymusi "development" przy `next dev`, ale endpoint dopuszcza E2E_MODE=true:
   NODE_ENV: process.env.NODE_ENV ?? "test",
   E2E_MODE: "true",
 };
 
 export default defineConfig({
   testDir: "tests/e2e",
-  // ⬆️ podnieś timeout, bo w testach czekasz do 60s na READY/FAILED
   timeout: 120_000,
   use: {
     baseURL: BASE_URL,
