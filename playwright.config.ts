@@ -17,12 +17,15 @@ const webEnv: Record<string, string> = {
   BASE_URL,
   MOCK_MODE: "true",
   YTDLP_PATH: path.resolve(__dirname, "tests/e2e/yt-dlp-mock.js"),
+  // Next.js i tak wymusi "development" przy `next dev`, ale endpoint dopuszcza E2E_MODE=true:
   NODE_ENV: process.env.NODE_ENV ?? "test",
+  E2E_MODE: "true",
 };
 
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: 30_000,
+  // ⬆️ podnieś timeout, bo w testach czekasz do 60s na READY/FAILED
+  timeout: 120_000,
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
@@ -36,14 +39,29 @@ export default defineConfig({
   },
   projects: [
     { name: "setup", testMatch: /auth\.setup\.ts/ },
+
     {
-      name: "chromium",
+      name: "chromium-parallel",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
       testIgnore: /auth\.setup\.ts/,
+      grepInvert: /@serial-env/,
       dependencies: ["setup"],
+    },
+
+    {
+      name: "chromium-serial-env",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      testIgnore: /auth\.setup\.ts/,
+      grep: /@serial-env/,
+      workers: 1,
+      fullyParallel: false,
+      dependencies: ["setup", "chromium-parallel"],
     },
   ],
 });
