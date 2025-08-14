@@ -14,6 +14,8 @@ import { createRateLimiter, clientIp } from "@server/middleware/rateLimit";
 import type { AuthUser } from "@shared/types/auth";
 import type { JobStatus, SummaryLevel } from "@shared/types/job";
 
+const E2E_MODE = process.env.E2E_MODE === "true";
+
 type YoutubeJobBody = {
   url: string;
   level: SummaryLevel;
@@ -22,8 +24,13 @@ type YoutubeJobBody = {
 const limiter = createRateLimiter(env.RATE_LIMIT_PER_MIN);
 
 const MAX_DURATION_SECONDS = env.MAX_VIDEO_MINUTES * 60;
-const YT_URL_RE =
-  /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]{6,}/i;
+
+const PROD_RE =
+  /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]{11}/i;
+
+const TEST_RE =
+  /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]+/i;
+const YT_URL_RE = E2E_MODE ? TEST_RE : PROD_RE;
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   if (!limiter.allow(clientIp(req.headers))) {
