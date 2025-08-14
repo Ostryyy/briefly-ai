@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@lib/api";
 import { isAuthed } from "@lib/auth";
@@ -22,11 +22,14 @@ export default function JobForm() {
   const [mode, setMode] = useState<"upload" | "youtube">("upload");
   const [level, setLevel] = useState<Level>("medium");
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
 
   const [starting, setStarting] = useState(false);
+
+  const [previewHidden, setPreviewHidden] = useState(false);
 
   const status = useJobStream(jobId ?? undefined);
 
@@ -50,6 +53,7 @@ export default function JobForm() {
     if (!canSubmit || starting) return;
 
     setStarting(true);
+    setPreviewHidden(true);
     try {
       if (mode === "upload") {
         if (!file) return;
@@ -58,13 +62,17 @@ export default function JobForm() {
         fd.append("level", level);
         const { jobId } = await api.startUpload(fd);
         setJobId(jobId);
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
         toast.success("Upload started");
       } else {
         if (!url) return;
         const { jobId } = await api.startYoutube({ url, level });
         setJobId(jobId);
+        setUrl("");
         toast.success("YouTube job started");
       }
+      setPreviewHidden(false);
     } catch (e) {
       toast.error(
         <span data-testid="toast-job-start-error">
@@ -136,6 +144,7 @@ export default function JobForm() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="hidden"
               disabled={starting}
+              ref={fileInputRef}
             />
             <div className="text-sm text-gray-600">
               {file ? (
@@ -192,12 +201,23 @@ export default function JobForm() {
         </div>
       )}
 
-      {jobId && (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      {!starting && jobId && !previewHidden && (
+        <div
+          className="relative rounded-2xl border bg-white p-4 shadow-sm"
+          data-testid="jobinfo-panel"
+        >
+          <button
+            type="button"
+            aria-label="Hide job panel"
+            data-testid="jobinfo-close"
+            className="absolute right-2 top-2 rounded-md p-1 text-gray-500 hover:bg-gray-100"
+            onClick={() => setPreviewHidden(true)}
+          >
+            ×
+          </button>
           <div data-testid="jobinfo-id-value" className="text-xs text-gray-500">
             Job ID: {jobId}
           </div>
-
           <div className="mt-3 grid gap-2 sm:grid-cols-5">
             {steps.map((s, i) => (
               <div key={s} className="flex items-center gap-2">
@@ -211,7 +231,6 @@ export default function JobForm() {
               </div>
             ))}
           </div>
-
           <div className="mt-3 flex items-center gap-3">
             <div>{status ? <StatusBadge status={status.status} /> : null}</div>
             {status ? null : (
@@ -226,10 +245,9 @@ export default function JobForm() {
               </a>
             )}
           </div>
-
           {status?.message && (
             <div className="mt-2 text-xs text-gray-600">{status.message}</div>
-          )}
+          )}{" "}
         </div>
       )}
 
