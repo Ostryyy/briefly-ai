@@ -109,11 +109,20 @@ async function simulateProcessJob(params: ProcessJobParams) {
 
   const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
-  const failProb =
-    process.env.MOCK_FAIL_PROB != null
-      ? Number(process.env.MOCK_FAIL_PROB)
-      : 0.3;
-  const willFail = Math.random() < Math.max(0, Math.min(1, failProb));
+  const force = process.env.MOCK_FORCE_FAIL;
+  let willFail: boolean;
+
+  if (force === "true") {
+    willFail = true;
+  } else if (force === "false") {
+    willFail = false;
+  } else {
+    const failProb =
+      process.env.MOCK_FAIL_PROB != null
+        ? Number(process.env.MOCK_FAIL_PROB)
+        : 0.3;
+    willFail = Math.random() < Math.max(0, Math.min(1, failProb));
+  }
 
   const speed = Number(process.env.MOCK_SPEED ?? 1); // 1 = normal, 0.25 = 4x faster
   const clamp = (n: number, a: number, b: number) =>
