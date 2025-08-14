@@ -1,5 +1,15 @@
 import { expect, Page } from "@playwright/test";
 
+export type JobStatus =
+  | "PENDING"
+  | "DOWNLOADING"
+  | "TRANSCRIBING"
+  | "SUMMARIZING"
+  | "READY"
+  | "FAILED";
+
+const badgeTestId = (s: JobStatus) => `status-badge-${s.toLowerCase()}`;
+
 export async function waitOverlayAndGetJobId(page: Page): Promise<string> {
   const overlay = page.getByTestId("jobform-overlay");
   await overlay.waitFor({ state: "visible" });
@@ -13,8 +23,9 @@ export async function waitOverlayAndGetJobId(page: Page): Promise<string> {
   return jobId!;
 }
 
-export async function waitHomeReadyOrFail(
+export async function waitHomeForStatus(
   page: Page,
+  status: JobStatus,
   timeout = 60_000
 ): Promise<void> {
   const errorToast = page.getByTestId("toast-job-start-error");
@@ -24,58 +35,77 @@ export async function waitHomeReadyOrFail(
     throw new Error("Error toast appeared on home page");
   })();
 
-  await Promise.race([
-    errorWatch,
-    page
-      .getByTestId("status-badge-ready")
-      .waitFor({ state: "visible", timeout }),
-  ]);
+  const target = page.getByTestId(badgeTestId(status)).waitFor({
+    state: "visible",
+    timeout,
+  });
+
+  await Promise.race([errorWatch, target]);
 
   await expect(errorToast).toHaveCount(0);
 }
 
-export async function waitJobsListReadyOrFail(
+export async function waitJobsListForStatus(
   page: Page,
   jobId: string,
+  status: JobStatus,
   timeout = 60_000
 ): Promise<void> {
   const card = page.getByTestId(`jobcard-${jobId}`);
   await expect(card).toBeVisible({ timeout: 15_000 });
 
-  const status = card.getByTestId("jobcard-status");
-  const errorToast = page.getByTestId("toast-job-start-error");
-
-  const errorWatch = (async () => {
-    await errorToast.waitFor({ state: "visible", timeout });
-    throw new Error("Error toast appeared on jobs list");
-  })();
-
-  const readyWatch = expect(status).toHaveText("READY", { timeout });
-
-  await Promise.race([errorWatch, readyWatch]);
-  await expect(errorToast).toHaveCount(0);
+  await expect(card.getByTestId("jobcard-status")).toHaveText(status, {
+    timeout,
+  });
 }
 
-export async function waitJobDetailsReadyOrFail(
+export async function waitJobDetailsForStatus(
   page: Page,
   jobId: string,
+  status: JobStatus,
   timeout = 60_000
 ): Promise<void> {
   await expect(page.getByTestId("jobdetails-id")).toHaveText(jobId, {
     timeout: 15_000,
   });
 
-  const errorToast = page.getByTestId("toast-job-start-error");
+  await expect(page.getByTestId("jobdetails-status")).toHaveText(status, {
+    timeout,
+  });
+}
 
-  const errorWatch = (async () => {
-    await errorToast.waitFor({ state: "visible", timeout });
-    throw new Error("Error toast appeared on job details");
-  })();
+export function waitHomeReadyOrFail(page: Page, timeout = 60_000) {
+  return waitHomeForStatus(page, "READY", timeout);
+}
+export function waitJobsListReadyOrFail(
+  page: Page,
+  jobId: string,
+  timeout = 60_000
+) {
+  return waitJobsListForStatus(page, jobId, "READY", timeout);
+}
+export function waitJobDetailsReadyOrFail(
+  page: Page,
+  jobId: string,
+  timeout = 60_000
+) {
+  return waitJobDetailsForStatus(page, jobId, "READY", timeout);
+}
 
-  const readyWatch = page
-    .getByTestId("status-badge-ready")
-    .waitFor({ state: "visible", timeout });
-
-  await Promise.race([errorWatch, readyWatch]);
-  await expect(errorToast).toHaveCount(0);
+export function waitHomeFailed(page: Page, timeout = 60_000) {
+  return waitHomeForStatus(page, "FAILED", timeout);
+}
+export function waitJobsListFailed(
+  page: Page,
+  jobId: string,
+  timeout = 60_000
+) {
+  return waitJobsListForStatus(page, jobId, "FAILED", timeout);
+}
+export function waitJobDetailsFailed(
+  page: Page,
+  jobId: string,
+  timeout = 60_000
+) {
+  return waitJobDetailsForStatus(page, jobId, "FAILED", timeout);
 }
