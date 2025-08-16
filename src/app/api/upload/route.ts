@@ -18,8 +18,8 @@ import type { JobStatus, SummaryLevel } from "@shared/types/job";
 import { withAuth } from "@server/middleware/withAuth";
 import type { AuthUser } from "@shared/types/auth";
 import { createRateLimiter, clientIp } from "@server/middleware/rateLimit";
+import { runtimeLimits } from "@server/config/runtime";
 
-const limiter = createRateLimiter(env.RATE_LIMIT_PER_MIN);
 const allowedLevels = new Set<SummaryLevel>([
   "short",
   "medium",
@@ -28,6 +28,9 @@ const allowedLevels = new Set<SummaryLevel>([
 ]);
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const { RATE_LIMIT_PER_MIN, MAX_UPLOAD_MB } = runtimeLimits();
+  const limiter = createRateLimiter(RATE_LIMIT_PER_MIN);
+
   if (!limiter.allow(clientIp(req.headers))) {
     return NextResponse.json(
       { error: "Too many requests", code: "RATE_LIMITED" },
@@ -47,14 +50,14 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     );
   }
 
-  const maxBytes = env.MAX_UPLOAD_MB * 1024 * 1024;
+  const maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
   const clen = req.headers.get("content-length");
   if (clen && Number(clen) > maxBytes) {
     return NextResponse.json(
       {
         ok: false,
         code: "FILE_TOO_LARGE",
-        error: `Max ${env.MAX_UPLOAD_MB} MB`,
+        error: `Max ${MAX_UPLOAD_MB} MB`,
       },
       { status: 413 }
     );
@@ -98,7 +101,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
       {
         ok: false,
         code: "FILE_TOO_LARGE",
-        error: `Max ${env.MAX_UPLOAD_MB} MB`,
+        error: `Max ${MAX_UPLOAD_MB} MB`,
       },
       { status: 413 }
     );

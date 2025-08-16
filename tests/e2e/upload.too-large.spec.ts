@@ -36,7 +36,7 @@ test.describe("@serial-env", () => {
     );
     await expect(fileInput).toBeAttached();
 
-    const bigBuffer = Buffer.alloc(1.5 * 1024 * 1024, 0x41);
+    const bigBuffer = Buffer.alloc(10 * 1024 * 1024, 0x41);
 
     await fileInput.setInputFiles({
       name: "too-big.mp3",
