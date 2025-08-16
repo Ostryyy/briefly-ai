@@ -261,7 +261,7 @@ describe("POST /api/youtube", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        url: "https://www.youtube.com/watch?v=abcdef1",
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         level: "short",
       }),
     }) as unknown as NextRequest;
@@ -273,7 +273,7 @@ describe("POST /api/youtube", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        url: "https://youtu.be/abcdef2",
+        url: "https://youtu.be/dQw4w9WgXcQ",
         level: "short",
       }),
     }) as unknown as NextRequest;

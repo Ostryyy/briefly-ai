@@ -10,7 +10,10 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run --reporter=verbose",
-    "dev:e2e": "node -e \"require('fs').chmodSync('tests/e2e/yt-dlp-mock.js', 0o755)\" && cross-env MOCK_MODE=true YTDLP_PATH=./tests/e2e/yt-dlp-mock.js next dev -p 3000"
+    "test:ci": "vitest run --reporter=dot",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "dev:e2e": "node -e \"require('fs').chmodSync('tests/e2e/yt-dlp-mock.js', 0o755)\" && cross-env MOCK_MODE=true YTDLP_PATH=./tests/e2e/yt-dlp-mock.js next dev"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
