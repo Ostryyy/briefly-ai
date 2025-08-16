@@ -1,0 +1,93 @@
+name: E2E (Playwright)
+
+on:
+  push:
+    branches: ["ci/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --quiet --eval \"db.adminCommand('ping')\" || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      NODE_ENV: test
+      E2E_MODE: "true"
+      E2E_PORT: 3000
+      BASE_URL: http://localhost:3000
+      MONGODB_URI: mongodb://localhost:27017/briefly-e2e
+      OPENAI_API_KEY: "dummy"
+      JWT_SECRET: "e2e-ci-secret-min-16"
+      SKIP_ENV_VALIDATION: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Prepare e2e env file
+        run: |
+          cp tests/e2e/.env.e2e.example tests/e2e/.env.e2e
+          echo "MONGODB_URI=${MONGODB_URI}" >> tests/e2e/.env.e2e
+          echo "BASE_URL=${BASE_URL}" >> tests/e2e/.env.e2e
+          echo "E2E_PORT=${E2E_PORT}" >> tests/e2e/.env.e2e
+          echo "E2E_MODE=true" >> tests/e2e/.env.e2e
+          echo "MOCK_MODE=true" >> tests/e2e/.env.e2e
+
+      - name: Install Playwright (Chromium) + system deps
+        run: npx playwright install --with-deps chromium
+
+      - name: Cache Playwright binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Unit / integration (Vitest)
+        run: npm run test:ci
+
+      - name: Run E2E (Playwright)
+        run: npm run e2e
+
+      - name: Upload Playwright report (html)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces/videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results
+            playwright/.auth/user.json
+          if-no-files-found: ignore
