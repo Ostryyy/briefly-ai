@@ -37,3 +37,12 @@ export async function resetMockConfig(
   const res = await request.post("/api/test/mock", { data: { reset: true } });
   expect(res.ok()).toBeTruthy();
 }
+
+export async function getMockConfig(
+  request: APIRequestContext
+): Promise<Record<string, string | null>> {
+  const res = await request.get("/api/test/mock");
+  expect(res.ok()).toBeTruthy();
+  const json = await res.json();
+  return json.env as Record<string, string | null>;
+}

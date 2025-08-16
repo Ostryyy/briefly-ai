@@ -39,10 +39,22 @@ function currentSnapshot() {
   return env;
 }
 
-export async function POST(req: NextRequest) {
+function guard() {
   if (process.env.NODE_ENV !== "test" && process.env.E2E_MODE !== "true") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  return null;
+}
+
+export async function GET() {
+  const g = guard();
+  if (g) return g;
+  return NextResponse.json({ ok: true, env: currentSnapshot() });
+}
+
+export async function POST(req: NextRequest) {
+  const g = guard();
+  if (g) return g;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: any = {};

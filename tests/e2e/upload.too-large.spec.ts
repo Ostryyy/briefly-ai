@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setMockConfig, resetMockConfig } from "./helpers/mock";
+import { setMockConfig, getMockConfig, resetMockConfig } from "./helpers/mock";
 
 test.describe("@serial-env", () => {
   test.beforeAll(async ({ request }) => {
@@ -8,6 +8,10 @@ test.describe("@serial-env", () => {
       failProb: 0,
       forceFail: false,
     });
+
+    const snap = await getMockConfig(request);
+    expect(snap.MAX_UPLOAD_MB).toBe("1");
+    expect(snap.MOCK_MODE).toBe("true");
   });
 
   test.afterAll(async ({ request }) => {
