@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setMockConfig, resetMockConfig } from "./helpers/mock";
 import {
-  waitOverlayAndGetJobId,
+  waitStartSuccess,
   waitHomeFailed,
   waitJobsListFailed,
   waitJobDetailsFailed,
@@ -39,7 +39,7 @@ test.describe("@serial-env", () => {
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
-    const jobId = await waitOverlayAndGetJobId(page);
+    const jobId = await waitStartSuccess(page);
 
     const jobsPage = await context.newPage();
     const jobPage = await context.newPage();

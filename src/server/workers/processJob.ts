@@ -13,11 +13,10 @@ import { SummaryLevel } from "@shared/types/job";
 import { time, type Metrics } from "@server/workers/metrics";
 import { fileSize } from "@server/workers/fileSize";
 import { saveJobMetrics } from "@server/db/jobsRepo";
-
-const MOCK_MODE = process.env.MOCK_MODE === "true";
+import { runtimeMockMode } from "@server/config/runtime";
 
 export async function processJob(params: ProcessJobParams) {
-  if (MOCK_MODE) {
+  if (runtimeMockMode()) {
     await simulateProcessJob(params);
     return;
   }

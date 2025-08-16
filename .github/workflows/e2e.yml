@@ -1,0 +1,126 @@
+name: E2E (Playwright)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --quiet --eval \"db.adminCommand('ping')\" || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Prepare e2e env file (full)
+        run: |
+          mkdir -p tests/e2e
+          rm -f tests/e2e/.env.e2e
+          {
+            echo "# ------------ Server / URL ------------";
+            echo "E2E_PORT=${{ vars.E2E_PORT || '3000' }}";
+            echo "BASE_URL=${{ vars.BASE_URL || 'http://127.0.0.1:3000' }}";
+            echo "NODE_ENV=test";
+            echo "E2E_MODE=true";
+
+            echo "";
+            echo "# ------------ Auth (E2E account) ------------";
+            echo "E2E_EMAIL=${{ vars.E2E_EMAIL }}";
+            echo "E2E_USERNAME=${{ vars.E2E_USERNAME }}";
+            echo "E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}";
+            echo "E2E_TOKEN_KEY=${{ vars.E2E_TOKEN_KEY }}";
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}";
+
+            echo "";
+            echo "# ------------ Mocks / fast path ------------";
+            echo "MOCK_MODE=${{ vars.MOCK_MODE || 'true' }}";
+            echo "MOCK_SPEED=${{ vars.MOCK_SPEED || '0.25' }}";
+            echo "MOCK_FAIL_PROB=${{ vars.MOCK_FAIL_PROB || '0' }}";
+            echo "SKIP_ENV_VALIDATION=true";
+
+            echo "";
+            echo "# ------------ Limits (relaxed for tests) ------------";
+            echo "RATE_LIMIT_PER_MIN=${{ vars.RATE_LIMIT_PER_MIN }}";
+            echo "MAX_UPLOAD_MB=${{ vars.MAX_UPLOAD_MB }}";
+            echo "MAX_VIDEO_MINUTES=${{ vars.MAX_VIDEO_MINUTES}}";
+
+            echo "";
+            echo "# ------------ DB (isolated E2E db) ------------";
+            echo "MONGODB_URI=${{ vars.MONGODB_URI }}";
+            echo "MONGODB_DB=${{ vars.MONGODB_DB }}";
+
+            echo "";
+            echo "# ------------ yt-dlp (mock) ------------";
+            echo "YTDLP_PATH=./tests/e2e/yt-dlp-mock.js";
+            echo "YTDLP_COOKIES_PATH=";
+
+            echo "";
+            echo "# ------------ OpenAI / SMTP ------------";
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}";
+            echo "SMTP_USER=${{ secrets.SMTP_USER }}";
+            echo "SMTP_PASS=${{ secrets.SMTP_PASS }}";
+          } > tests/e2e/.env.e2e
+
+          echo "== GENERATED tests/e2e/.env.e2e =="
+          cat tests/e2e/.env.e2e
+
+      - name: Install Playwright (Chromium) + system deps
+        run: npx playwright install --with-deps chromium
+
+      - name: Cache Playwright binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Unit / integration (Vitest)
+        run: npm run test:ci
+
+      - name: Run E2E (Playwright)
+        run: npm run e2e
+
+      - name: Upload Playwright report (html)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces/videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results
+            playwright/.auth/user.json
+          if-no-files-found: ignore

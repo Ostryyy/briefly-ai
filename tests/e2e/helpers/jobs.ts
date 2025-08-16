@@ -10,46 +10,48 @@ export type JobStatus =
 
 const badgeTestId = (s: JobStatus) => `status-badge-${s.toLowerCase()}`;
 
-export async function waitOverlayAndGetJobId(page: Page): Promise<string> {
+export async function waitStartSuccess(page: Page): Promise<string> {
   const overlay = page.getByTestId("jobform-overlay");
   const errorToast = page.getByTestId("toast-job-start-error");
   const jobIdValue = page.getByTestId("jobinfo-id-value");
 
-  await overlay.waitFor({ state: "visible" });
-
-  const first = await Promise.race<"overlayGone" | "error">([
-    overlay.waitFor({ state: "detached" }).then(() => "overlayGone"),
-    errorToast.waitFor({ state: "visible" }).then(() => "error"),
+  await Promise.race([
+    overlay.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {}),
+    errorToast.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {}),
   ]);
-
-  if (first === "error") {
-    throw new Error("Job start error appeared before overlay disappeared");
-  }
 
   if (await errorToast.isVisible()) {
-    throw new Error("Job start error toast appeared after overlay disappeared");
-  }
-
-  const second = await Promise.race<
-    { kind: "id"; jobId: string } | { kind: "toast" }
-  >([
-    (async () => {
-      await expect(jobIdValue).toBeVisible({ timeout: 10_000 });
-      const raw = (await jobIdValue.textContent()) ?? "";
-      const jobId = raw.replace("Job ID:", "").trim();
-      expect(jobId, "Job ID should be present after start").not.toBe("");
-      return { kind: "id", jobId };
-    })(),
-    errorToast.waitFor({ state: "visible" }).then(() => ({ kind: "toast" })),
-  ]);
-
-  if (second.kind === "toast") {
     throw new Error(
-      "Job start error toast appeared before Job ID was available."
+      "Error toast appeared while waiting for a successful start."
     );
   }
 
-  return second.jobId;
+  await overlay.waitFor({ state: "detached", timeout: 30_000 });
+
+  await expect(errorToast).toHaveCount(0);
+
+  await expect(jobIdValue).toBeVisible({ timeout: 10_000 });
+  const raw = (await jobIdValue.textContent()) ?? "";
+  const jobId = raw.replace("Job ID:", "").trim();
+  expect(jobId, "Job ID should be present after start").not.toBe("");
+  return jobId;
+}
+
+export async function waitStartFailure(page: Page): Promise<void> {
+  const overlay = page.getByTestId("jobform-overlay");
+  const errorToast = page.getByTestId("toast-job-start-error");
+  const jobIdValue = page.getByTestId("jobinfo-id-value");
+
+  await Promise.race([
+    overlay.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {}),
+    errorToast.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {}),
+  ]);
+
+  await overlay.waitFor({ state: "detached", timeout: 30_000 }).catch(() => {});
+
+  await expect(jobIdValue).toHaveCount(0);
+
+  await expect(errorToast).toBeVisible({ timeout: 10_000 });
 }
 
 export async function waitHomeForStatus(

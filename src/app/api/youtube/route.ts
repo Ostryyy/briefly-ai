@@ -13,26 +13,28 @@ import { createRateLimiter, clientIp } from "@server/middleware/rateLimit";
 
 import type { AuthUser } from "@shared/types/auth";
 import type { JobStatus, SummaryLevel } from "@shared/types/job";
-
-const E2E_MODE = process.env.E2E_MODE === "true";
+import { runtimeLimits } from "@server/config/runtime";
 
 type YoutubeJobBody = {
   url: string;
   level: SummaryLevel;
 };
 
-const limiter = createRateLimiter(env.RATE_LIMIT_PER_MIN);
-
-const MAX_DURATION_SECONDS = env.MAX_VIDEO_MINUTES * 60;
-
 const PROD_RE =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]{11}/i;
 
 const TEST_RE =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]+/i;
-const YT_URL_RE = E2E_MODE ? TEST_RE : PROD_RE;
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const E2E_MODE = process.env.E2E_MODE === "true";
+  const YT_URL_RE = E2E_MODE ? TEST_RE : PROD_RE;
+
+  const { RATE_LIMIT_PER_MIN, MAX_VIDEO_MINUTES } = runtimeLimits();
+  const limiter = createRateLimiter(RATE_LIMIT_PER_MIN);
+
+  const MAX_DURATION_SECONDS = MAX_VIDEO_MINUTES * 60;
+
   if (!limiter.allow(clientIp(req.headers))) {
     return NextResponse.json(
       { error: "Too many requests", code: "RATE_LIMITED" },

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  waitOverlayAndGetJobId,
+  waitStartSuccess,
   waitHomeReadyOrFail,
   waitJobsListReadyOrFail,
   waitJobDetailsReadyOrFail,
@@ -32,7 +32,7 @@ test("YouTube → READY visible on home, jobs list and job details (happy)", asy
   await expect(submitBtn).toBeEnabled();
   await submitBtn.click();
 
-  const jobId = await waitOverlayAndGetJobId(page);
+  const jobId = await waitStartSuccess(page);
   const jobsPage = await context.newPage();
   const jobPage = await context.newPage();
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { spawn } from "node:child_process";
 import { getCookiesArgs } from "./ytdlpShared";
-import { env } from "@server/config/env";
+import { runtimeYtDlpPath } from "@server/config/runtime";
 
 export type YtMetaOpts = {
   binaryPath?: string;
@@ -12,7 +12,7 @@ export function getYoutubeVideoDurationSeconds(
   url: string,
   opts: YtMetaOpts = {}
 ): Promise<number> {
-  const ytBin = opts.binaryPath ?? env.YTDLP_PATH ?? "yt-dlp";
+  const ytBin = opts.binaryPath ?? runtimeYtDlpPath();
   const timeoutMs = opts.timeoutMs ?? 60_000;
 
   const cookies = getCookiesArgs();
