@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { writeFile } from "fs/promises";
 import path from "path";
 
-import { env } from "@server/config/env";
 import { statusStore } from "@server/state/statusStore";
 import {
   ensureTempDirExists,
