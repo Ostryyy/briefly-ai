@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  waitOverlayAndGetJobId,
+  waitStartSuccess,
   waitHomeReadyOrFail,
   waitJobsListReadyOrFail,
   waitJobDetailsReadyOrFail,
@@ -26,7 +26,7 @@ test("YouTube → READY when duration equals MAX_VIDEO_MINUTES (edge OK)", async
   await expect(submitBtn).toBeEnabled();
   await submitBtn.click();
 
-  const jobId = await waitOverlayAndGetJobId(page);
+  const jobId = await waitStartSuccess(page);
   const jobsPage = await context.newPage();
   const jobPage = await context.newPage();
 

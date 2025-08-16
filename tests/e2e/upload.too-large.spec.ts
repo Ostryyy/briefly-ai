@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setMockConfig, getMockConfig, resetMockConfig } from "./helpers/mock";
+import { waitStartFailure } from "./helpers/jobs";
 
 test.describe("@serial-env", () => {
   test.beforeAll(async ({ request }) => {
@@ -47,12 +48,7 @@ test.describe("@serial-env", () => {
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
-    const overlay = page.getByTestId("jobform-overlay");
-    await overlay.waitFor({ state: "visible" });
-    await overlay.waitFor({ state: "detached" });
-
-    const errorToast = page.getByTestId("toast-job-start-error");
-    await expect(errorToast).toBeVisible();
+    await waitStartFailure(page);
     await expect(page.getByTestId("jobinfo-id-value")).toHaveCount(0);
 
     await expect(submitBtn).toBeEnabled();

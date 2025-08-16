@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setMockConfig, resetMockConfig } from "./helpers/mock";
 import {
-  waitOverlayAndGetJobId,
+  waitStartSuccess,
   waitHomeFailed,
   waitJobsListFailed,
   waitJobDetailsFailed,
@@ -53,9 +53,7 @@ test.describe("@serial-env", () => {
 
     await submitBtn.click();
 
-    const jobId = await waitOverlayAndGetJobId(page);
-    console.log("Started jobId (forced fail):", jobId);
-
+    const jobId = await waitStartSuccess(page);
     const jobsPage = await context.newPage();
     const jobPage = await context.newPage();
     await Promise.all([jobsPage.goto("/jobs"), jobPage.goto(`/jobs/${jobId}`)]);

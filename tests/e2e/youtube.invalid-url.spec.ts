@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { waitStartFailure } from "./helpers/jobs";
 
 /**
  * Invalid URL:
@@ -17,10 +18,6 @@ test("YouTube → shows error toast for invalid URL", async ({ page }) => {
   await expect(submitBtn).toBeEnabled();
   await submitBtn.click();
 
-  const overlay = page.getByTestId("jobform-overlay");
-  await overlay.waitFor({ state: "visible" });
-  await overlay.waitFor({ state: "detached" });
-
-  await expect(page.getByTestId("toast-job-start-error")).toBeVisible();
+  await waitStartFailure(page);
   await expect(page.getByTestId("jobinfo-id-value")).toHaveCount(0);
 });

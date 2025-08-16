@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  waitOverlayAndGetJobId,
+  waitStartSuccess,
   waitHomeReadyOrFail,
   waitJobsListReadyOrFail,
   waitJobDetailsReadyOrFail,
@@ -39,9 +39,7 @@ test("Upload → READY visible on home, jobs list and job details (dummy buffer)
 
   await submitBtn.click();
 
-  const jobId = await waitOverlayAndGetJobId(page);
-  console.log("Started jobId:", jobId);
-
+  const jobId = await waitStartSuccess(page);
   const jobsPage = await context.newPage();
   const jobPage = await context.newPage();
 
