@@ -1,14 +1,18 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@server/middleware/withAuth";
+import type { AuthUser } from "@shared/types/auth";
+
 import { statusStore } from "@server/state/statusStore";
 import type { JobStatus } from "@shared/types/job";
 
-export function GET(req: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const GET = withAuth(async (req: NextRequest, _user: AuthUser) => {
   const url = new URL(req.url);
   const jobId = url.searchParams.get("jobId");
-  if (!jobId) return new Response("Missing jobId", { status: 400 });
+  if (!jobId) return new NextResponse("Missing jobId", { status: 400 });
 
   const encoder = new TextEncoder();
   let closed = false;
@@ -40,10 +44,11 @@ export function GET(req: NextRequest) {
       };
 
       const initial = statusStore.get(jobId);
-      if (initial)
+      if (initial) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(initial)}\n\n`)
         );
+      }
 
       statusStore.onChange(jobId, send);
 
@@ -82,7 +87,7 @@ export function GET(req: NextRequest) {
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-store, no-transform",
@@ -90,4 +95,4 @@ export function GET(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
-}
+});
