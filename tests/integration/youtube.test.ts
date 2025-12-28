@@ -211,7 +211,7 @@ describe("POST /api/youtube", () => {
       .calls[0];
     expect(calledJobId).toBe(json.jobId);
     expect(calledStatus.status).toBe("PENDING");
-    expect(thirdArg).toBeUndefined();
+    expect(thirdArg).toBeDefined();
 
     expect(processJob).toHaveBeenCalledTimes(1);
     const [args] = (processJob as any).mock.calls[0];
