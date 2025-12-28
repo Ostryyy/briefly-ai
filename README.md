@@ -171,10 +171,10 @@ Commands:
 
 ```bash
 # headless
-npm run test:e2e
+npm run e2e
 
 # debug with UI
-npx playwright test --ui
+npm run e2e:ui
 ```
 
 ## Mock mode (no external calls)
@@ -264,7 +264,7 @@ MOCK_MODE=true YTDLP_PATH=./tests/e2e/yt-dlp-mock.js npm run dev
 ## Testy
 
 * **Vitest**: `npm run test` – logika limitów, API `/api/upload` i `/api/youtube`, krawędzie i błędy.
-* **Playwright**: `npm run test:e2e` lub `npx playwright test --ui` – rejestracja/logowanie (auto w `auth.setup.ts`), ścieżki upload/YouTube (READY/FAILED), walidacje (too long), obserwacja **SSE** na stronie głównej, liście i detalach, obserwacja toasta błędu.
+* **Playwright**: `npm run e2e` lub `npm run e2e:ui` – rejestracja/logowanie (auto w `auth.setup.ts`), ścieżki upload/YouTube (READY/FAILED), walidacje (too long), obserwacja **SSE** na stronie głównej, liście i detalach, obserwacja toasta błędu.
 
 ## Tryb mock (bez zewnętrznych kosztów)
 
