@@ -95,7 +95,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
     userEmail: user.email,
   };
 
-  statusStore.set(jobId, initialStatus);
+  statusStore.set(jobId, initialStatus, user.userId);
 
   processJob({
     jobId,

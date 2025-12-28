@@ -17,7 +17,11 @@ export function withAuth(
       ? authHeader.slice(7).trim()
       : undefined;
 
-    const token = bearer;
+    const queryToken =
+      req.nextUrl.searchParams.get("token")?.trim() || undefined;
+
+    const token = bearer ?? queryToken;
+
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -43,11 +47,7 @@ export function withAuth(
         );
       }
 
-      const user: AuthUser = {
-        userId: decoded.userId,
-        email: decoded.email,
-      };
-
+      const user: AuthUser = { userId: decoded.userId, email: decoded.email };
       return handler(req, user);
     } catch {
       return NextResponse.json(

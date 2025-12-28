@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { JobDoc } from "@shared/types/jobs";
+import { getToken } from "./auth";
 
-const TERMINAL = new Set<JobDoc["status"]>(["READY","FAILED"]);
+const TERMINAL = new Set<JobDoc["status"]>(["READY", "FAILED"]);
 
 export function useJobsStream(jobIds: string[] | undefined) {
   const [updates, setUpdates] = useState<Record<string, JobDoc>>({});
@@ -12,6 +13,7 @@ export function useJobsStream(jobIds: string[] | undefined) {
 
   useEffect(() => {
     const current = sourcesRef.current;
+    const token = getToken();
 
     for (const id of Object.keys(current)) {
       if (!ids.includes(id)) {
@@ -22,7 +24,11 @@ export function useJobsStream(jobIds: string[] | undefined) {
 
     ids.forEach((id) => {
       if (current[id]) return;
-      const es = new EventSource(`/api/status/stream?jobId=${encodeURIComponent(id)}`);
+      const url =
+        `/api/status/stream?jobId=${encodeURIComponent(id)}` +
+        (token ? `&token=${encodeURIComponent(token)}` : "");
+
+      const es = new EventSource(url);
 
       es.onmessage = (evt) => {
         try {
