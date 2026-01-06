@@ -31,15 +31,15 @@ ENV PORT=3000
 
 # system deps
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates python3 \
- && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates python3 \
+  && rm -rf /var/lib/apt/lists/*
 
 # yt-dlp
 ARG YTDLP_VERSION=2025.06.30
 RUN curl -L -o /usr/local/bin/yt-dlp \
-    "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp" \
- && chmod +x /usr/local/bin/yt-dlp \
- && /usr/local/bin/yt-dlp --version
+  "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp" \
+  && chmod +x /usr/local/bin/yt-dlp \
+  && /usr/local/bin/yt-dlp --version
 
 # Next standalone output
 COPY --from=build /app/.next/standalone ./

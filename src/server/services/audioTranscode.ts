@@ -6,7 +6,14 @@ export async function transcodeForWhisper(
   outExt = "m4a",
   kbps = 48
 ) {
-  const output = input.replace(path.extname(input), `.${outExt}`);
+  const inExt = path.extname(input);
+  const wantedExt = `.${outExt}`;
+
+  const output =
+    inExt.toLowerCase() === wantedExt.toLowerCase()
+      ? input.replace(inExt, `.whisper${wantedExt}`)
+      : input.replace(inExt, wantedExt);
+
   await new Promise<void>((resolve, reject) => {
     const ff = spawn(
       "ffmpeg",
@@ -14,6 +21,11 @@ export async function transcodeForWhisper(
         "-y",
         "-i",
         input,
+
+        "-vn",
+        "-sn",
+        "-dn",
+
         "-ac",
         "1",
         "-ar",
@@ -24,9 +36,11 @@ export async function transcodeForWhisper(
       ],
       { stdio: "inherit" }
     );
+
     ff.on("close", (code) =>
       code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}`))
     );
   });
+
   return output;
 }
