@@ -10,7 +10,7 @@ export type YtMetaOpts = {
 
 export function getYoutubeVideoDurationSeconds(
   url: string,
-  opts: YtMetaOpts = {}
+  opts: YtMetaOpts = {},
 ): Promise<number> {
   const ytBin = opts.binaryPath ?? runtimeYtDlpPath();
   const timeoutMs = opts.timeoutMs ?? 60_000;
@@ -19,7 +19,7 @@ export function getYoutubeVideoDurationSeconds(
 
   return new Promise<number>((resolve, reject) => {
     const args = ["--no-playlist", "--skip-download", "-j", ...cookies, url];
-    const child = spawn(ytBin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawnYtDlp(ytBin, args);
 
     let stdoutBuf = "";
     let stderrBuf = "";
@@ -71,8 +71,8 @@ export function getYoutubeVideoDurationSeconds(
           new Error(
             `yt-dlp exited with code ${code}. Stderr:\n${
               stderrBuf || "(empty)"
-            }`
-          )
+            }`,
+          ),
         );
       }
 
@@ -81,8 +81,8 @@ export function getYoutubeVideoDurationSeconds(
         ? resolve(duration)
         : reject(
             new Error(
-              "Could not determine video duration from yt-dlp metadata."
-            )
+              "Could not determine video duration from yt-dlp metadata.",
+            ),
           );
     });
   });
@@ -106,14 +106,27 @@ function pickDurationFromJsonLines(buf: string): number | null {
 function runOnce(cmd: string, args: string[]) {
   return new Promise<{ stdout: string; stderr: string; code: number }>(
     (res) => {
-      const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawnYtDlp(cmd, args);
       let out = "",
         err = "";
       p.stdout.on("data", (d) => (out += d.toString()));
       p.stderr.on("data", (d) => (err += d.toString()));
       p.on("close", (code) =>
-        res({ stdout: out.trim(), stderr: err.trim(), code: code ?? 0 })
+        res({ stdout: out.trim(), stderr: err.trim(), code: code ?? 0 }),
       );
-    }
+    },
   );
+}
+
+function spawnYtDlp(ytBin: string, args: string[]) {
+  const isJs = ytBin.toLowerCase().endsWith(".js");
+  const isWin = process.platform === "win32";
+
+  if (isWin && isJs) {
+    return spawn(process.execPath, [ytBin, ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  }
+
+  return spawn(ytBin, args, { stdio: ["ignore", "pipe", "pipe"] });
 }

@@ -9,8 +9,8 @@
  *   YTDLP_MOCK_FAIL=1  → exit with code 1 to simulate yt-dlp failure.
  */
 
-const fs = require("fs");
-const path = require("path");
+import { mkdirSync, writeFileSync } from "fs";
+import { dirname } from "path";
 
 const args = process.argv.slice(2);
 
@@ -59,8 +59,8 @@ function getOutputPath(argv) {
 const out = getOutputPath(args);
 if (out) {
   try {
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, "mock audio data\n");
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, "mock audio data\n");
   } catch (e) {
     process.stderr.write(`[yt-dlp-mock] Failed to create output: ${e}\n`);
     process.exit(1);

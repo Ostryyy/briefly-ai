@@ -13,8 +13,8 @@ const BASE_URL = process.env.BASE_URL ?? `http://localhost:${E2E_PORT}`;
 const webEnv: Record<string, string> = {
   ...Object.fromEntries(
     Object.entries(process.env).flatMap(([k, v]) =>
-      typeof v === "string" ? ([[k, v]] as const) : []
-    )
+      typeof v === "string" ? ([[k, v]] as const) : [],
+    ),
   ),
   PORT: String(E2E_PORT),
   BASE_URL,
